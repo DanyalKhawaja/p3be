@@ -1,0 +1,29 @@
+version: '2'
+services:
+  app:
+    container_name: node-api-prod-container_
+    image: node-api-prod
+    restart: always
+#    build: .
+    volumes:
+      - "/_/node-api-prod/LOGS:/node-api-prod/LOGS"
+      - "/_/node-api-prod/routes:/node-api-prod/routes"
+      - "/_/node-api-prod/config:/node-api-prod/config"
+      - "/_/node-api-prod/controllers:/node-api-prod/controllers"
+      - "/_/node-api-prod/models:/node-api-prod/models"
+      - "/_/node-api-prod/validators:/node-api-prod/validators"
+      - "/_/node-api-prod/app.js:/node-api-prod/app.js"
+      - "/etc/localtime:/etc/localtime:ro"
+
+    ports:
+      - "9000:8881"
+    links:
+      - mongo
+  mongo:
+    container_name: mongo-node-api-prod
+    image: mongo
+    restart: always
+    volumes:
+    - "/_/node-api-prod/db:/data/db"
+    ports:
+      - "27020:27017"
