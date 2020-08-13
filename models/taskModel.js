@@ -9,6 +9,7 @@ var TaskSchema = new schema(
     description: { type: String, required: true },
     plannedStartDate: { type: Date, required: true  },
     plannedEndDate: { type: Date,  required: true  },
+    monitoringFrequency: { type: String },
     workPackage: { type: Boolean},
     plannedCost: { type: Number,  required: true },
     deleted: { type: Boolean },

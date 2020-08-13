@@ -510,6 +510,7 @@ module.exports = {
           console.log(element.project)
 
           task.project = element.project ? element.project : task.project;
+          task.monitoringFrequency = element.monitoringFrequency ? element.monitoringFrequency : task.monitoringFrequency;
           task.parentTask = element.parentTask ? element.parentTask : task.parentTask;
           task.description = element.description ? element.description : task.description;
           task.plannedStartDate = element.plannedStartDate ? element.plannedStartDate : task.plannedStartDate;
