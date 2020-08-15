@@ -18,6 +18,7 @@ var taskPlannedResourceSchema = new schema({
   project: {  type: mongoose.Schema.ObjectId, ref: 'Project',  required: true},
   wp: { type: String, required: true },
   resource: { type: mongoose.Schema.ObjectId, ref: 'Resource', required: true },
+  resourceType: { type: mongoose.Schema.ObjectId, ref: 'ResourceType', required: true },
   quantity: { type: Number, required: true },
   resourceCostPerUnit: { type: Number, required: true },
   plannedStartDate: { type: Date, required: true },
