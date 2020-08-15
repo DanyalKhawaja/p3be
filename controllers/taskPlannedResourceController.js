@@ -292,6 +292,10 @@ module.exports = {
             project: element.project ? element.project : taskPlannedResource.project,
             task: element.task ? element.task : taskPlannedResource.task,
             resource: element.resource ? element.resource : taskPlannedResource.resource,
+            resourceType: element.resourceType ? element.resourceType : taskPlannedResource.resourceType,
+            plannedStartDate: element.plannedStartDate ? element.plannedStartDate : taskPlannedResource.plannedStartDate,
+            plannedEndDate: element.plannedEndDate ? element.plannedEndDate : taskPlannedResource.plannedEndDate,
+            projectLocation: element.projectLocation ? element.projectLocation : taskPlannedResource.projectLocation,
             quantity: element.quantity ? element.quantity : taskPlannedResource.quantity,
             resourceCostPerUnit: element.resourceCostPerUnit ? element.resourceCostPerUnit : taskPlannedResource.resourceCostPerUnit,
           }
