@@ -4,13 +4,15 @@ const router = express.Router();
 const resourceTypeController = require("../controllers/resourceTypeController");
 
 
-
 /*
  * GET
  */
 router.get("/", resourceTypeController.list);
 
 /*
+ * GET
+ */
+router.get("/LeafResourceTypes", resourceTypeController.LeafResourceTypes);
 
 /*
  * POST

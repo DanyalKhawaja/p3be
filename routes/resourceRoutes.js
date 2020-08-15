@@ -11,9 +11,17 @@ const resourceController = require("../controllers/resourceController");
 router.get("/", resourceController.list);
 
 /*
+ * GET
+ */
+router.get("/AllActive", resourceController.allActive);
+
+/*
  * GET Resource By ID
  */
 router.get("/:id", resourceController.show);
+
+router.get("/availableResourceType/:typeId/:startDate/:endDate", resourceController.showAvailableByResourceType);
+
 /*
  * GET Resource By ResourceType
  */
