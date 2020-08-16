@@ -288,7 +288,7 @@ allActive: function (req, res) {
     try {
       const DATETIME = dateFormat(new Date(), "yyyy-mm-dd HH:MM:ss");
       var id = req.params.id;
-      resourceModel.findOne({ resourceType: id }, function (err, resource) {
+      resourceModel.find({ resourceType: id }, function (err, resource) {
         if (err) {
           const LOGMESSAGE = DATETIME + "|" + err.message;
           log.write("ERROR", LOGMESSAGE);
