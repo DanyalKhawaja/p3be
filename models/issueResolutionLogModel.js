@@ -8,11 +8,7 @@ var issueResolutionLogSchema = new schema(
       ref: 'IssueInitiationLog',
       required: true
     },
-    responsibleForResolution: {
-      type: mongoose.Schema.ObjectId,
-      ref: 'User',
-      required: true
-    },
+    responsibleForResolution: { type: String, required: true },
     issueType: {
       type: mongoose.Schema.ObjectId,
       ref: 'IssueType',

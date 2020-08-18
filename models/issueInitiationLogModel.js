@@ -14,11 +14,8 @@ var issueInitiationLogSchema = new schema(
         ref: 'IssueCategory',  
         required: true },
     issueCreateDate: { type: String, required: true },
-    requestedBy: { 
-        type: mongoose.Schema.ObjectId,
-        ref: 'User', 
-        required: true},
-    issueType: { 
+    requestedBy: { type: String, required: true },
+    issueType: {
         type: mongoose.Schema.ObjectId,
         ref: 'IssueType',  
         required: true },
