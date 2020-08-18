@@ -297,6 +297,7 @@ module.exports = {
             plannedEndDate: element.plannedEndDate ? element.plannedEndDate : taskPlannedResource.plannedEndDate,
             projectLocation: element.projectLocation ? element.projectLocation : taskPlannedResource.projectLocation,
             quantity: element.quantity ? element.quantity : taskPlannedResource.quantity,
+            total: element.total ? element.total : taskPlannedResource.total,
             resourceCostPerUnit: element.resourceCostPerUnit ? element.resourceCostPerUnit : taskPlannedResource.resourceCostPerUnit,
           }
           taskPlannedResourceModel.updateOne({ _id: element._id }, taskPlannedResourceJson, function (err, taskPlannedResource) {

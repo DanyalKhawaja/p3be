@@ -23,7 +23,8 @@ var taskPlannedResourceSchema = new schema({
   resourceCostPerUnit: { type: Number, required: true },
   plannedStartDate: { type: Date, required: true },
   plannedEndDate: { type: Date, required: true },
-  projectLocation: { type: mongoose.Schema.ObjectId, ref: 'ProjectLocation', required: true }
+  projectLocation: { type: mongoose.Schema.ObjectId, ref: 'ProjectLocation', required: true },
+  total: { type: Number, required: true }
 });
 
 // taskPlannedResourcekSchema.pre('save', function (next) {

@@ -21,7 +21,7 @@ module.exports = {
        return res.status(401).send({success:false, msg: 'The email address ' + req.body.email + ' is not associated with any account. Double-check your email address and try again.' });}
 
       user.comparePassword(req.body.password, user.password,function (err, isMatch) {
-  
+
         if (!isMatch) {
           const LOGMESSAGE = DATETIME + "|Invalid email or password";
           log.write("ERROR", LOGMESSAGE);
