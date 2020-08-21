@@ -41,27 +41,27 @@ module.exports = {
       try {
          const DATETIME = dateFormat(new Date(), "yyyy-mm-dd HH:MM:ss");
          var id = req.params.id;
-        //  issueLogModel.find({
-        //     project: id
-        //  }).select({
-        //     description: 1,
-        //     _id: 0,
-        //     logs: {
-        //        $slice: -1
-        //     }
-        //  }).exec(function(err, doc) {});
+         issueLogModel.find({
+            project: id
+         }).select({
+            description: 1,
+            _id: 0,
+            logs: {
+               $slice: -1
+            }
+         }).exec(function(err, doc) {});
 
-         issueLogModel.aggregate([
-           {"$match": { "project": id }},
-            {"$issueLog": {
-               description: 1,
-               _id: 1,
-               lastLog: {
-                  $slice: ["$logs", -1]
-               }
-            }}, {
-            $unwind: "$lastLog"
-         }])  
+        //  issueLogModel.aggregate([
+        //    {"$match": { "project": id }},
+        //     {"$issueLog": {
+        //        description: 1,
+        //        _id: 1,
+        //        lastLog: {
+        //           $slice: ["$logs", -1]
+        //        }
+        //     }}, {
+        //     $unwind: "$lastLog"
+        //  }])  
          
          
          
