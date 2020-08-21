@@ -74,8 +74,19 @@ module.exports = {
                $unwind: {
                   path: "$lastLog"
                }}
-            // } ,{"$match": { "project": ObjectId(id) }}
-         ]).exec(function(err, issueLog) {
+              ])
+            //,{"$match": { "project": ObjectId(id) }}
+
+         //   issueLogModel.find({project:id}, {logs: { "$slice": -1 }})
+         //   .populate("project","name")
+         //  .populate({path: "logs", populate: {path: 'issueType', model: 'issueType'}})
+            //.populate({path:"description", model: "issueType"})
+
+
+
+
+
+         .exec(function(err, issueLog) {
             if (err) {
                const LOGMESSAGE = DATETIME + "|" + err.message;
                log.write("ERROR", LOGMESSAGE);
