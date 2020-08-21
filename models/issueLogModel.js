@@ -39,7 +39,9 @@ var issueLogSchema = new schema({
       responsibleForResolution: {
          type: String
       },
-
+      comments: {
+        type: String,
+      },
       status: {
          type: String,
          required: true

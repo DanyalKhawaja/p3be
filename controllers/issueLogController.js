@@ -41,34 +41,41 @@ module.exports = {
       try {
          const DATETIME = dateFormat(new Date(), "yyyy-mm-dd HH:MM:ss");
          var id = req.params.id;
-        //  issueLogModel.find({
-        //     project: id
-        //  }).select({
-        //     description: 1,
-        //     _id: 1,
-        //     logs: {
-        //        $slice: -1
-        //     },
-        //     "$unwind": "logs"
-        //  })
-      //  .exec(function(err, doc) {});
+         //  issueLogModel.find({
+         //     project: id
+         //  }).select({
+         //     description: 1,
+         //     _id: 1,
+         //     logs: {
+         //        $slice: -1
+         //     },
+         //     "$unwind": "logs"
+         //  })
+         //  .exec(function(err, doc) {});
 
          issueLogModel.aggregate([
-     //      {"$match": { "project": id }},
-            {"$project": {
-               description: 1,
-               project: 1,
-               _id: 1,
-               lastLog: {
-                  $slice: ["$logs", -1]
+            
+            // { "$lookup": {
+            //   "from": "project",
+            //   "localField": "project",
+            //   "foreignField": "_id",
+            //   "as": "accounts"
+            // }},
+            {
+               $project: {
+                  description: 1,
+                  project: 1,
+                  _id: 1,
+                  lastLog: {
+                     $slice: ["$logs", -1]
+                  }
                }
-            }}, {
-            $unwind: "$lastLog"
-         }])  
-         
-         
-         
-         .exec(function(err, issueLog) {
+            },    {
+               $unwind: {
+                  path: "$lastLog"
+               }}
+            // } ,{"$match": { "project": ObjectId(id) }}
+         ]).exec(function(err, issueLog) {
             if (err) {
                const LOGMESSAGE = DATETIME + "|" + err.message;
                log.write("ERROR", LOGMESSAGE);
@@ -95,7 +102,7 @@ module.exports = {
          });
       }
    },
-
+  
    listByProjectId: function(req, res) {
       try {
          const DATETIME = dateFormat(new Date(), "yyyy-mm-dd HH:MM:ss");
