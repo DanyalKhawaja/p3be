@@ -52,7 +52,7 @@ module.exports = {
         //  }).exec(function(err, doc) {});
 
          issueLogModel.aggregate([
-           {"$match": { "project": id },
+           {"$match": { "project": id }},
             {"$issueLog": {
                description: 1,
                _id: 1,
