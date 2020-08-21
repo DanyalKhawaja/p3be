@@ -5,6 +5,10 @@ const issueLogModel = require("../models/issueLogModel");
 const issueUpdateModel = require("../models/issueUpdateModel");
 const log = require("../lib/logger");
 
+//uncomment below 2 lines for options 1 in latestListByProjectId
+//var Mongoose = require('mongoose');
+//var ObjectId = Mongoose.Types.ObjectId;
+
 module.exports = {
    list: function(req, res) {
       try {
@@ -41,51 +45,44 @@ module.exports = {
       try {
          const DATETIME = dateFormat(new Date(), "yyyy-mm-dd HH:MM:ss");
          var id = req.params.id;
-         //  issueLogModel.find({
-         //     project: id
-         //  }).select({
-         //     description: 1,
-         //     _id: 1,
-         //     logs: {
-         //        $slice: -1
-         //     },
-         //     "$unwind": "logs"
-         //  })
-         //  .exec(function(err, doc) {});
 
+         //option 1 **********************
+         // line number 9 & 10 should be uncommented
+         
+         /*
          issueLogModel.aggregate([
-            
-            // { "$lookup": {
-            //   "from": "project",
-            //   "localField": "project",
-            //   "foreignField": "_id",
-            //   "as": "accounts"
-            // }},
-            {
-               $project: {
-                  description: 1,
-                  project: 1,
-                  _id: 1,
-                  lastLog: {
-                     $slice: ["$logs", -1]
-                  }
+            {$match: {"project":ObjectId(id)}},
+            { $project: {  description: 1, project: 1, latest: { $slice: [ "$logs", -1 ] } } }
+            , { $unwind : "$latest" }
+            ,{
+               "$lookup": {
+                 "from": "issuecategories",
+                 "localField": "latest.category",
+                 "foreignField": "_id",
+                 "as": "issueCategory"
                }
-            },    {
-               $unwind: {
-                  path: "$lastLog"
-               }}
-              ])
-            //,{"$match": { "project": ObjectId(id) }}
+            }
+            , { $unwind : "$issueCategory" }
+            ,{
+               "$lookup": {
+                 "from": "issuetypes",
+                 "localField": "latest.issueType",
+                 "foreignField": "_id",
+                 "as": "issueType"
+               }
+            }
+            , { $unwind : "$issueType" }
+         ])
+         */
+            
+              // option 2 ****************************
+            issueLogModel.find({project:id}, {logs: { "$slice": -1 }})
+            .populate("project","name")
+            .populate("logs.category")
+            .populate("logs.issueType")
 
-         //   issueLogModel.find({project:id}, {logs: { "$slice": -1 }})
-         //   .populate("project","name")
-         //  .populate({path: "logs", populate: {path: 'issueType', model: 'issueType'}})
-            //.populate({path:"description", model: "issueType"})
 
-
-
-
-
+               
          .exec(function(err, issueLog) {
             if (err) {
                const LOGMESSAGE = DATETIME + "|" + err.message;
