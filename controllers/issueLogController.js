@@ -1,0 +1,219 @@
+const dateFormat = require("dateformat");
+const Promise = require("bluebird");
+
+const issueLogModel = require("../models/issueLogModel");
+const issueUpdateModel = require("../models/issueUpdateModel");
+const log = require("../lib/logger");
+
+module.exports = {
+   list: function(req, res) {
+      try {
+         const DATETIME = dateFormat(new Date(), "yyyy-mm-dd HH:MM:ss");
+         issueLogModel.find(function(err, issueLog) {
+            if (err) {
+               const LOGMESSAGE = DATETIME + "|" + err.message;
+               log.write("ERROR", LOGMESSAGE);
+               return res.status(500).json({
+                  success: false,
+                  msg: "Error when getting issueLog.",
+                  error: err
+               });
+            }
+            const LOGMESSAGE = DATETIME + "|issue Log List found";
+            log.write("INFO", LOGMESSAGE);
+            return res.json({
+               success: true,
+               data: issueLog
+            });
+         });
+      } catch (error) {
+         const LOGMESSAGE = DATETIME + "|" + error.message;
+         log.write("ERROR", LOGMESSAGE);
+         return res.status(500).json({
+            success: false,
+            msg: "Error when getting issueLog.",
+            error: error
+         });
+      }
+   },
+
+   latestListByProjectId: function(req, res) {
+      try {
+         const DATETIME = dateFormat(new Date(), "yyyy-mm-dd HH:MM:ss");
+         issueLogModel.aggregate([{
+            $project: {
+               description: 1,
+               _id: 0,
+               lastLog: {
+                  $slice: ["$logs", -1]
+               }
+            }
+         }, {
+            $unwind: "$lastLog"
+         }]).exec(function(err, issueLog) {
+            if (err) {
+               const LOGMESSAGE = DATETIME + "|" + err.message;
+               log.write("ERROR", LOGMESSAGE);
+               return res.status(500).json({
+                  success: false,
+                  msg: "Error when getting issue Log.",
+                  error: err
+               });
+            }
+            const LOGMESSAGE = DATETIME + "|issue Log List found";
+            log.write("INFO", LOGMESSAGE);
+            return res.json({
+               success: true,
+               data: issueLog
+            });
+         });
+      } catch (error) {
+         const LOGMESSAGE = DATETIME + "|" + error.message;
+         log.write("ERROR", LOGMESSAGE);
+         return res.status(500).json({
+            success: false,
+            msg: "Error when getting issueLog.",
+            error: error
+         });
+      }
+   },
+
+   listByProjectId: function(req, res) {
+      try {
+         const DATETIME = dateFormat(new Date(), "yyyy-mm-dd HH:MM:ss");
+         issueLogModel.find({
+            project: projectId
+         }, function(err, issueLog) {
+            if (err) {
+               const LOGMESSAGE = DATETIME + "|" + err.message;
+               log.write("ERROR", LOGMESSAGE);
+               return res.status(500).json({
+                  success: false,
+                  msg: "Error when getting issueLog.",
+                  error: err
+               });
+            }
+            const LOGMESSAGE = DATETIME + "|issue Log List found";
+            log.write("INFO", LOGMESSAGE);
+            return res.json({
+               success: true,
+               data: issueLog
+            });
+         });
+      } catch (error) {
+         const LOGMESSAGE = DATETIME + "|" + error.message;
+         log.write("ERROR", LOGMESSAGE);
+         return res.status(500).json({
+            success: false,
+            msg: "Error when getting issueLog.",
+            error: error
+         });
+      }
+   },
+
+   create: function(req, res) {
+      try {
+         const DATETIME = dateFormat(new Date(), "yyyy-mm-dd HH:MM:ss");
+         var issueLog = new issueLogModel({
+            project: req.body.project,
+            description: req.body.description,
+            logs: [{
+               category: req.body.category,
+               logDate: req.body.issueCreateDate,
+               requestedBy: req.body.requestedBy,
+               issueType: req.body.issueType,
+               urgency: req.body.urgency,
+               responsibleForResolution: req.body.responsibleForResolution,
+               deliveryEstimate: req.body.deliveryEstimate,
+               status: req.body.status,
+               createdDate: req.body.createDate,
+               createdBy: req.body.createdBy
+            }]
+         });
+
+         issueLog.save(function(err, issueLog) {
+            if (err) {
+               const LOGMESSAGE = DATETIME + "|" + err.message;
+               log.write("ERROR", LOGMESSAGE);
+               return res.status(500).json({
+                  success: false,
+                  msg: "Error when creating issue Log",
+                  error: err
+               });
+            }
+            const LOGMESSAGE = DATETIME + "|issue Log created";
+            log.write("INFO", LOGMESSAGE);
+            // return res.Log(201).json(issue Log);
+            return res.json({
+               success: true,
+               msg: "issue Log is created",
+               data: issueLog
+            });
+         });
+      } catch (error) {
+         const LOGMESSAGE = DATETIME + "|" + error.message;
+         log.write("ERROR", LOGMESSAGE);
+         return res.status(500).json({
+            success: false,
+            msg: "Error when creating issue Log",
+            error: error
+         });
+      }
+   },
+
+   update: function(req, res) {
+      try {
+         const DATETIME = dateFormat(new Date(), "yyyy-mm-dd HH:MM:ss");
+         var id = req.params.id;
+         issueLogModel.findOne({
+            _id: id
+         }, function(err, issueLog) {
+            if (err) {
+               const LOGMESSAGE = DATETIME + "|" + err.message;
+               log.write("ERROR", LOGMESSAGE);
+               return res.status(500).json({
+                  success: false,
+                  msg: "Error when getting issue Log",
+                  error: err
+               });
+            }
+            if (!issueLog) {
+               const LOGMESSAGE = DATETIME + "|No such issue Log to update";
+               log.write("ERROR", LOGMESSAGE);
+               return res.status(404).json({
+                  success: false,
+                  msg: "No such issue Log"
+               });
+            }
+            issueLog.logs.push(req.body.logs);
+            issueLog.save(function(err, issueLog) {
+               if (err) {
+                  const LOGMESSAGE = DATETIME + "|" + err.message;
+                  log.write("ERROR", LOGMESSAGE);
+                  return res.status(500).json({
+                     success: false,
+                     msg: "Error when updating issue Log.",
+                     error: err
+                  });
+               }
+               const LOGMESSAGE = DATETIME + "|Saved issue Log";
+               log.write("INFO", LOGMESSAGE);
+               return res.json({
+                  success: true,
+                  msg: "issue Log is updated",
+                  data: issueLog
+               });
+               // return res.json(issue Log);
+            });
+         });
+      } catch (error) {
+         const LOGMESSAGE = DATETIME + "|" + error.message;
+         log.write("ERROR", LOGMESSAGE);
+         return res.status(500).json({
+            success: false,
+            msg: "Error when creating issue Log",
+            error: error
+         });
+      }
+   }
+};

@@ -1,0 +1,24 @@
+{
+"project":"5e9741bdfb8bc50011cb9b80",
+"description":"asdfadsf",
+"category":"5f325f207f9534001270a7a8",
+"issueCreateDate":"8/18/2020",
+"requestedBy":"asdf",
+"issueType":"5f325df57f9534001270a7a6",
+"urgency":"2",
+"comment":"asdasd",
+"createdBy":"5f322414d468280011c1f1f5"
+"IssueType":5f325df57f9534001270a7a6", //Seems duplicate column
+"Priority":"2"//Seems to be same as urgency Might be not required
+"prevoisIssueID":"5f322414d468280011c1f2e5", //incase the issue is reopen this field must contain previous issue id for detail
+
+"history":
+{
+"ResponsibleForResolution":"5f322414d468280011c1f2e5",
+"Status":"open",
+"DeliveryEstimate":"10/18/2020",
+"CreateDate"
+"CreatedBy:"5f322414d468280011c1f1f5"
+},
+
+}'
