@@ -117,18 +117,7 @@ module.exports = {
          var issueLog = new issueLogModel({
             project: req.body.project,
             description: req.body.description,
-            logs: [{
-               category: req.body.category,
-               logDate: req.body.issueCreateDate,
-               requestedBy: req.body.requestedBy,
-               issueType: req.body.issueType,
-               urgency: req.body.urgency,
-               responsibleForResolution: req.body.responsibleForResolution,
-               deliveryEstimate: req.body.deliveryEstimate,
-               status: req.body.status,
-               createdDate: req.body.createDate,
-               createdBy: req.body.createdBy
-            }]
+            logs: req.body.logs
          });
 
          issueLog.save(function(err, issueLog) {
