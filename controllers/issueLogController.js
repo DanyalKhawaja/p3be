@@ -60,7 +60,7 @@ module.exports = {
                   $slice: ["$logs", -1]
                }
             }}, {
-            $unwind: "$issueLog"
+            $unwind: "$lastLog"
          }])  
          
          
