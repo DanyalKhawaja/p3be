@@ -57,6 +57,7 @@ module.exports = {
      //      {"$match": { "project": id }},
             {"$project": {
                description: 1,
+               project: 1,
                _id: 1,
                lastLog: {
                   $slice: ["$logs", -1]
