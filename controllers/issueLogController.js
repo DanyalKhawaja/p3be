@@ -6,8 +6,8 @@ const issueUpdateModel = require("../models/issueUpdateModel");
 const log = require("../lib/logger");
 
 //uncomment below 2 lines for options 1 in latestListByProjectId
-//var Mongoose = require('mongoose');
-//var ObjectId = Mongoose.Types.ObjectId;
+var Mongoose = require('mongoose');
+var ObjectId = Mongoose.Types.ObjectId;
 
 module.exports = {
    list: function(req, res) {
@@ -49,37 +49,37 @@ module.exports = {
          //option 1 **********************
          // line number 9 & 10 should be uncommented
          
-         /*
+         
          issueLogModel.aggregate([
             {$match: {"project":ObjectId(id)}},
-            { $project: {  description: 1, project: 1, latest: { $slice: [ "$logs", -1 ] } } }
+            { $project: {  description: 1, project: 1, latest: { $slice: [ "$logs", -1 ] } }, }
             , { $unwind : "$latest" }
             ,{
                "$lookup": {
                  "from": "issuecategories",
                  "localField": "latest.category",
                  "foreignField": "_id",
-                 "as": "issueCategory"
+                 "as": "latest.issueCategory"
                }
             }
-            , { $unwind : "$issueCategory" }
+           // , { $unwind : "$issueCategory" }
             ,{
                "$lookup": {
                  "from": "issuetypes",
                  "localField": "latest.issueType",
                  "foreignField": "_id",
-                 "as": "issueType"
+                 "as": "latest.issueType"
                }
             }
-            , { $unwind : "$issueType" }
+           // , { $unwind : "$issueType" }
          ])
-         */
+         
             
               // option 2 ****************************
-            issueLogModel.find({project:id}, {logs: { "$slice": -1 }})
-            .populate("project","name")
-            .populate("logs.category")
-            .populate("logs.issueType")
+            // issueLogModel.find({project:id}, {logs: { "$slice": -1 }})
+            // .populate("project","name")
+            // .populate("logs.category")
+            // .populate("logs.issueType")
 
 
                
