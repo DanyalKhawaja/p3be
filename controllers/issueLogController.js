@@ -52,26 +52,26 @@ module.exports = {
          
          issueLogModel.aggregate([
             {$match: {"project":ObjectId(id)}},
-            { $project: {  description: 1, project: 1, latest: { $slice: [ "$logs", -1 ] } }, }
-            , { $unwind : "$latest" }
+            { $project: {  description: 1, project: 1, lastLog: { $slice: [ "$logs", -1 ] } }, }
+            , { $unwind : "$lastLog" }
             ,{
                "$lookup": {
                  "from": "issuecategories",
-                 "localField": "latest.category",
+                 "localField": "lastLog.category",
                  "foreignField": "_id",
                  "as": "latest.issueCategory"
                }
             }
-           // , { $unwind : "$issueCategory" }
+           , { $unwind : "$issueCategory" }
             ,{
                "$lookup": {
                  "from": "issuetypes",
-                 "localField": "latest.issueType",
+                 "localField": "lastLog.issueType",
                  "foreignField": "_id",
                  "as": "latest.issueType"
                }
             }
-           // , { $unwind : "$issueType" }
+           , { $unwind : "$issueType" }
          ])
          
             
