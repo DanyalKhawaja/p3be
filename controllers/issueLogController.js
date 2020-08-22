@@ -59,7 +59,7 @@ module.exports = {
                  "from": "issuecategories",
                  "localField": "lastLog.category",
                  "foreignField": "_id",
-                 "as": "latest.issueCategory"
+                 "as": "lastLog.issueCategory"
                }
             }
            , { $unwind : "$issueCategory" }
@@ -68,7 +68,7 @@ module.exports = {
                  "from": "issuetypes",
                  "localField": "lastLog.issueType",
                  "foreignField": "_id",
-                 "as": "latest.issueType"
+                 "as": "lastLog.issueType"
                }
             }
            , { $unwind : "$issueType" }
