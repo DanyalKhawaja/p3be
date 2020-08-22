@@ -62,7 +62,7 @@ module.exports = {
                  "as": "lastLog.issueCategory"
                }
             }
-           , { $unwind : "$issueCategory" }
+           , { $unwind : "$lastLog.issueCategory" }
             ,{
                "$lookup": {
                  "from": "issuetypes",
@@ -71,7 +71,7 @@ module.exports = {
                  "as": "lastLog.issueType"
                }
             }
-           , { $unwind : "$issueType" }
+           , { $unwind : "$lastLog.issueType" }
          ])
          
             
