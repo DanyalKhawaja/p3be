@@ -53,7 +53,16 @@ module.exports = {
          issueLogModel.aggregate([
             {$match: {"project":ObjectId(id)}},
             { $project: {  description: 1, project: 1, lastLog: { $slice: [ "$logs", -1 ] } }, }
-            , { $unwind : "$lastLog" }
+            , { $unwind : "$lastLog" },
+            ,{
+               "$lookup": {
+                 "from": "project",
+                 "localField": "project",
+                 "foreignField": "_id",
+                 "as": "project"
+               }
+            }
+         //   , { $unwind : "$lastLog.issueCategory" }
             ,{
                "$lookup": {
                  "from": "issuecategories",
