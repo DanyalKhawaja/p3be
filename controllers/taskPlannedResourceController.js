@@ -170,36 +170,15 @@ module.exports = {
   create: function (req, res) {
     try {
       const DATETIME = dateFormat(new Date(), "yyyy-mm-dd HH:MM:ss");
-      // var taskPlannedResource = new taskPlannedResourceModel({
-      // project: req.body.project,
-      // task: req.body.task,
-      // resource: req.body.resource,docker
-      // quantity: req.body.quantity,
-      // resourceCostPerUnit:req.body.resourceCostPerUnit,
-
-      // });
-      //  taskPlannedResourceModel.deleteMany({
-      //     project: req.body[0].project
-      //  }, function(err, taskPlannedResource1) {
-      //     if (err) {
-      //        const LOGMESSAGE = DATETIME + "|" + err.message;
-      //        log.write("ERROR", LOGMESSAGE);
-      //        return res.status(500).json({
-      //           success: false,
-      //           msg: "Error when deleting the taskPlannedResource.",
-      //           error: err
-      //        });
-      //     }
-
       taskPlannedResourceBaseModel.deleteMany({
-        project: req.body.resources[0].project
+        project: req.body.projectId
       }, function (err, taskPlannedResource1) {
         if (err) {
           const LOGMESSAGE = DATETIME + "|" + err.message;
           log.write("ERROR", LOGMESSAGE);
           return res.status(500).json({success: false, msg: "Error when deleting the taskPlannedResource.", error: err});
         }
-        if (req.body.resources) {
+        if (req.body.resources.length >0) {
           taskPlannedResourceModel.insertMany(req.body.resources, function (err, taskPlannedResource2) {
             if (err) {
               const LOGMESSAGE = DATETIME + "|" + err.message;
@@ -210,23 +189,22 @@ module.exports = {
             log.write("INFO", LOGMESSAGE);
           });
         }
-        if (req.body.BOQ) {
+
+        if (req.body.BOQ.length >0) {
           taskPlannedBOQModel.insertMany(req.body.BOQ, function (err, taskPlannedResource2) {
             if (err) {
               const LOGMESSAGE = DATETIME + "|" + err.message;
               log.write("ERROR", LOGMESSAGE);
               return res.status(500).json({success: false, msg: "Error when creating taskPlannedBOQ", error: err});
             }
-            const LOGMESSAGE = DATETIME + "|taskPlannedResource created";
+            const LOGMESSAGE = DATETIME + "|taskPlannedBOQ created";
             log.write("INFO", LOGMESSAGE);
             // return res.status(201).json(taskPlannedResource);
             return res.json({success: true, msg: "taskPlannedResource is created", data: taskPlannedResource2});
           });
         }
 
-        // return res.status(201).json(taskPlannedResource);
-       // return res.json({success: true, msg: "taskPlannedResource is created", data: taskPlannedResource2});
-      });
+       });
     } catch (error) {
       const LOGMESSAGE = DATETIME + "|" + error.message;
       log.write("ERROR", LOGMESSAGE);

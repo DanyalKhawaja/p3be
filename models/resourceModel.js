@@ -13,7 +13,8 @@ var ResourceSchema = new Schema(
     resourceUnit: { type: String, required:true},
     currency: { type: String},
     rate: {type: Number},
-    isActive : { type: Boolean, required:true}//,
+    external: { type: Boolean, default: false},
+    isActive : { type: Boolean, required:true},
     //available  : { type: Boolean, required:true}
    
   }

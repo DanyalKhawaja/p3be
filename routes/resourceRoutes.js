@@ -20,7 +20,7 @@ router.get("/AllActive", resourceController.allActive);
  */
 router.get("/:id", resourceController.show);
 
-router.get("/availableResourceType/:typeId/:startDate/:endDate", resourceController.showAvailableByResourceType);
+router.get("/availableResourceType/:typeId/:startDate/:endDate/:wbsId", resourceController.showAvailableByResourceType);
 
 /*
  * GET Resource By ResourceType

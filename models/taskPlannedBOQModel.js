@@ -3,22 +3,14 @@ var schema = mongoose.Schema;
 var TaskPlannedResourceBaseModel = require("./taskPlannedResourceBaseModel");
 
 var taskPlannedBOQSchema = new schema({
-   item: {
-      type: String
-   },
-   itemType: {
-      type: String
-   },
-   quantity: {
-      type: Number,
+  
+   boqType: {
+      type: String,
       required: true
    },
-   resourceCostPerUnit: {
-      type: Number,
+   uom: {
+      type: String,
       required: true
-   },
-   UOM: {
-      type: String
    }
 });
 
