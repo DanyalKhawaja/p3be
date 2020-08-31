@@ -50,6 +50,8 @@ const programStakeholderRoutes = require('./routes/programStakeholderRoutes')
 const stakeholderRoleRoutes = require('./routes/stakeholderRoleRoutes')
 const benefitsNatureRoutes = require('./routes/benefitsNatureRoutes')
 const pptRoutes = require('./routes/pptRoutes')
+const pptCriteriaRoutes = require('./routes/pptCriteriaRoutes')
+const pptOptionsRoutes = require('./routes/pptOptionsRoutes')
 
 mongoose
   .connect(databaseConfig.uri, {
@@ -117,6 +119,8 @@ app.use("/program/stakeholder", passport.authenticate('jwt', { session: false })
 app.use("/stakeholderrole", passport.authenticate('jwt', { session: false }), stakeholderRoleRoutes)
 app.use("/benefitsnature", passport.authenticate('jwt', { session: false }), benefitsNatureRoutes)
 app.use("/ppt", passport.authenticate('jwt', { session: false }), pptRoutes)
+app.use("/pptCriteria", passport.authenticate('jwt', { session: false }), pptCriteriaRoutes)
+app.use("/pptOptions", passport.authenticate('jwt', { session: false }), pptOptionsRoutes)
 
 
 module.exports = app;
