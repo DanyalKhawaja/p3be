@@ -6,14 +6,14 @@ var programBenefitSchema = new schema(
      
     program: { type: mongoose.Schema.ObjectId, ref: 'Program', required:true},
     projectManager: { type: mongoose.Schema.ObjectId, ref: 'User',  required: true },
+    nature: { type: mongoose.Schema.ObjectId, ref: 'BenefitsNature',  required: true },
     description: { type: String, required: true },
-    nature: { type: String, required: true },
     value: { type: String, required: true },
     measurementApproach: { type: String, required: true },
     notes: { type: String, required: true },
     benefitStartDate: { type: Date },
     benefitDuration: { type: String, required: true },
-    assessmentResponsibility: { type: String, required: true },
+    assessmentResponsibility: { type: mongoose.Schema.ObjectId, ref: 'User',  required: true },
     createdDate: { type: Date, default: Date.now },
     createdBy: { type: mongoose.Schema.ObjectId, ref: 'User',  required: true }
  

@@ -21,7 +21,7 @@ module.exports = {
         const LOGMESSAGE = DATETIME + "|programStakeholder List found";
         log.write("INFO", LOGMESSAGE);
         return res.json({success:true,data:programStakeholder});
-      });
+      }).populate('role','description');
     } catch (error) {
       const LOGMESSAGE = DATETIME + "|" + error.message;
       log.write("ERROR", LOGMESSAGE);
@@ -61,7 +61,7 @@ module.exports = {
         log.write("INFO", LOGMESSAGE);
         return res.json({success:true,data:programStakeholder});
         // return res.json(programStakeholder);
-      });
+      }).populate('role','description');;
     } catch (error) {
       const LOGMESSAGE = DATETIME + "|" + error.message;
       log.write("ERROR", LOGMESSAGE);

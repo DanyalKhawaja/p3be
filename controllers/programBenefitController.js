@@ -21,7 +21,7 @@ module.exports = {
         const LOGMESSAGE = DATETIME + "|programBenefit List found";
         log.write("INFO", LOGMESSAGE);
         return res.json({success:true,data:programBenefit});
-      });
+      }).populate('program', 'name').populate('projectManager', 'username').populate('nature', 'description').populate('assessmentResponsibility', 'username');
     } catch (error) {
       const LOGMESSAGE = DATETIME + "|" + error.message;
       log.write("ERROR", LOGMESSAGE);
@@ -61,7 +61,7 @@ module.exports = {
         log.write("INFO", LOGMESSAGE);
         return res.json({success:true,data:programBenefit});
         // return res.json(programBenefit);
-      });      
+      }).populate('program', 'name').populate('projectManager', 'username').populate('nature', 'description').populate('assessmentResponsibility', 'username');
     } catch (error) {
       const LOGMESSAGE = DATETIME + "|" + error.message;
       log.write("ERROR", LOGMESSAGE);
