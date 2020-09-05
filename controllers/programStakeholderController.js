@@ -35,11 +35,12 @@ module.exports = {
   },
 
   show: function (req, res) {
+    const DATETIME = dateFormat(new Date(), "yyyy-mm-dd HH:MM:ss");
     try {
-      const DATETIME = dateFormat(new Date(), "yyyy-mm-dd HH:MM:ss");
+      
       var id = req.params.id;
      
-      programStakeholderModel.find({ program: id}).exec(function (err, programStakeholder) {
+      programStakeholderModel.find({ program: id}).populate('role','description').exec(function (err, programStakeholder) {
         if (err) {
           const LOGMESSAGE = DATETIME + "|" + err.message;
           log.write("ERROR", LOGMESSAGE);
@@ -61,7 +62,7 @@ module.exports = {
         log.write("INFO", LOGMESSAGE);
         return res.json({success:true,data:programStakeholder});
         // return res.json(programStakeholder);
-      }).populate('role','description');;
+      });
     } catch (error) {
       const LOGMESSAGE = DATETIME + "|" + error.message;
       log.write("ERROR", LOGMESSAGE);

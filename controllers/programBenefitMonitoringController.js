@@ -39,7 +39,7 @@ module.exports = {
       const DATETIME = dateFormat(new Date(), "yyyy-mm-dd HH:MM:ss");
       var id = req.params.id;
      
-      programBenefitMonitoringModel.find({ benefit: id}).exec(function (err, programBenefitMonitoring) {
+      programBenefitMonitoringModel.find({ benefit: id}).populate('assessmentBy', 'username').populate('benefit', 'description').exec(function (err, programBenefitMonitoring) {
         if (err) {
           const LOGMESSAGE = DATETIME + "|" + err.message;
           log.write("ERROR", LOGMESSAGE);
@@ -61,7 +61,7 @@ module.exports = {
         log.write("INFO", LOGMESSAGE);
         return res.json({success:true,data:programBenefitMonitoring});
         // return res.json(programBenefitMonitoring);
-      }).populate('assessmentBy', 'username').populate('benefit', 'description');       
+      });       
     } catch (error) {
       const LOGMESSAGE = DATETIME + "|" + error.message;
       log.write("ERROR", LOGMESSAGE);
