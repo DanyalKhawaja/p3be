@@ -2,7 +2,7 @@ const dateFormat = require("dateformat");
 var Mongoose = require("mongoose");
 var ObjectId = Mongoose.Types.ObjectId;
 const resourceModel = require("../models/resourceModel");
-const taskPlannedResourceBaseModel = require("../models/taskPlannedResourceBaseModel");
+const taskPlannedResourceModel = require("../models/taskPlannedResourceModel");
 const log = require("../lib/logger");
 
 module.exports = {
@@ -103,7 +103,7 @@ showAvailableByResourceType: function (req, res) {
       var startDate = new Date(req.params.startDate);
       var endDate = new Date(req.params.endDate);
       var wbsId = req.params.wbsId;
-      var ids = taskPlannedResourceBaseModel.find({
+      var ids = taskPlannedResourceModel.find({
         $and: [
           {
             resourceType: ObjectId(id)
