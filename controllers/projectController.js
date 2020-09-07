@@ -308,6 +308,7 @@ module.exports = {
   
         project.name= req.body.name? req.body.name: project.name;
         project.program= req.body.program? req.body.program: project.program;
+        project.managementReserve=req.body.managementReserve? req.body.managementReserve:project.managementReserve;
         project.expectedStartDate= req.body.expectedStartDate? req.body.expectedStartDate: project.expectedStartDate;
         project.expectedEndDate= req.body.expectedEndDate? req.body.expectedEndDate: project.expectedEndDate;
         project.milestones =  req.body.milestones.map(milestone => (new componentMilestoneModel({
@@ -410,6 +411,7 @@ module.exports = {
             program: req.body.program,
             projectType: req.body.projectType,
             projectLocation: req.body.projectLocation,
+            managementReserve: req.body.managementReserve,
             totalEstimatedBudget: req.body.totalEstimatedBudget,
             expectedStartDate: req.body.expectedStartDate,
             expectedEndDate: req.body.expectedEndDate,
@@ -480,7 +482,8 @@ module.exports = {
         project.name= req.body.name? req.body.name: project.name;
         project.description= req.body.description? req.body.description: project.description;
         project.program= req.body.program? req.body.program: project.program;
-        project.projectType- req.body.projectType? req.body.projectType: project.projectType;
+        project.projectType= req.body.projectType? req.body.projectType: project.projectType;
+        project.managementReserve= req.body.managementReserve? req.body.managementReserve: project.managementReserve;
         project.projectLocation= req.body.projectLocation? req.body.projectLocation: project.projectLocation;
         project.totalEstimatedBudget= req.body.totalEstimatedBudget? req.body.totalEstimatedBudget: project.totalEstimatedBudget;
         project.expectedStartDate= req.body.expectedStartDate? req.body.expectedStartDate: project.expectedStartDate;
