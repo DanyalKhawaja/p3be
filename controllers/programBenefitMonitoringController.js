@@ -39,6 +39,45 @@ module.exports = {
       const DATETIME = dateFormat(new Date(), "yyyy-mm-dd HH:MM:ss");
       var id = req.params.id;
      
+      programBenefitMonitoringModel.findOne({ _id: id}).populate('assessmentBy', 'username').populate('benefit', 'description').exec(function (err, programBenefitMonitoring) {
+        if (err) {
+          const LOGMESSAGE = DATETIME + "|" + err.message;
+          log.write("ERROR", LOGMESSAGE);
+          return res.status(500).json({
+            success:false,
+            msg: "Error when getting programBenefitMonitoring.",
+            error: err
+          });
+        }
+        if (!programBenefitMonitoring) {
+          const LOGMESSAGE = DATETIME + "|No such programBenefitMonitoring:"+id;
+          log.write("ERROR", LOGMESSAGE);
+          return res.status(404).json({
+            success:false,
+            msg: "No such programBenefitMonitoring:"+id
+          });
+        }
+        const LOGMESSAGE = DATETIME + "|programBenefitMonitoring Found";
+        log.write("INFO", LOGMESSAGE);
+        return res.json({success:true,data:programBenefitMonitoring});
+        // return res.json(programBenefitMonitoring);
+      });       
+    } catch (error) {
+      const LOGMESSAGE = DATETIME + "|" + error.message;
+      log.write("ERROR", LOGMESSAGE);
+      return res.status(500).json({
+        success:false,
+        msg: "Error when getting programBenefitMonitoring.",
+        error: error
+      });
+    }
+
+  },
+  showByBenefit: function (req, res) {
+    try {
+      const DATETIME = dateFormat(new Date(), "yyyy-mm-dd HH:MM:ss");
+      var id = req.params.id;
+     
       programBenefitMonitoringModel.find({ benefit: id}).populate('assessmentBy', 'username').populate('benefit', 'description').exec(function (err, programBenefitMonitoring) {
         if (err) {
           const LOGMESSAGE = DATETIME + "|" + err.message;
@@ -73,7 +112,6 @@ module.exports = {
     }
 
   },
-
   create: function (req, res) {
     try {
       const DATETIME = dateFormat(new Date(), "yyyy-mm-dd HH:MM:ss");

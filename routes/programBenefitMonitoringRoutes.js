@@ -10,7 +10,13 @@ const programBenefitMonitoringController = require("../controllers/programBenefi
 router.get("/all", programBenefitMonitoringController.list);
 
 /*
- * GET programBenefitMonitoring By programBenefitMonitoring ID
+ * GET programBenefitMonitoring By Benefit ID
+ */
+router.get("/byBenefit/:id",  programBenefitMonitoringController.showByBenefit);
+
+
+/*
+ * GET programBenefitMonitoring By  ID
  */
 router.get("/:id",  programBenefitMonitoringController.show);
 
