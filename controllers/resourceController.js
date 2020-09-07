@@ -100,8 +100,8 @@ showAvailableByResourceType: function (req, res) {
       //const ObjectId = mongoose.Types.ObjectId;
       const DATETIME = dateFormat(new Date(), "yyyy-mm-dd HH:MM:ss");
       var id = req.params.typeId;
-      var startDate = new Date(req.params.startDate);
-      var endDate = new Date(req.params.endDate);
+      var startDate =req.params.startDate;
+      var endDate =req.params.endDate;
       var wbsId = req.params.wbsId;
       var ids = taskPlannedResourceModel.find({
         $and: [
@@ -157,13 +157,17 @@ showAvailableByResourceType: function (req, res) {
             ]
           }
         ]
-      }, {
+       
+      }
+      , {
         _id: 0,
         resource: 1
-      }).exec(function (err, engagedResources) {
-        // var engangedResources = new Array();
+      }
+      ).exec(function (err, engagedResources) {
+        var rs = new Array();
+
         // for (var i = 0; i < engagedResources.length; i++) {
-        //   resoruces.push(engagedResources[i]._doc.resource);
+        //   rs.push(engagedResources[i]._doc.resource);
         // }
         //resourceModel.find({"_id": {"$nin": [ObjectId("4f08a75f306b428fb9d8bb2e"),  ObjectId("4f08a766306b428fb9d8bb2f")]}})`
         resourceModel.find({
@@ -177,8 +181,8 @@ showAvailableByResourceType: function (req, res) {
                 }, {
                   $and: [
                     {
-                      _id: {
-                        $nin: [engagedResources.map(er => er.resource)]
+                      id: {
+                        $nin: [engagedResources.map(er => er._doc.resource)]
                       }
                     }, {
                       isActive: {
@@ -188,9 +192,8 @@ showAvailableByResourceType: function (req, res) {
                   ]
                 }
               ]
-            }
-          ]
-        }, function (err, availableResources) {
+         
+        }]}, function (err, availableResources) {
           const LOGMESSAGE = DATETIME + "| resource found";
           log.write("INFO", LOGMESSAGE);
           return res.json({success: true, data: availableResources});

@@ -5,11 +5,13 @@ var TaskPlannedResourceBaseModel = require("./taskPlannedResourceBaseModel");
 var taskPlannedResourceSchema = new schema({
    resource: {
       type: mongoose.Schema.ObjectId,
-      ref: "Resource"
+      ref: "Resource",
+      required: true
    },
    resourceType: {
       type: mongoose.Schema.ObjectId,
-      ref: "ResourceType"
+      ref: "ResourceType",
+      required: true
    },
    external: {
      type: Boolean,
