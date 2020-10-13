@@ -8,6 +8,10 @@ var taskPlannedBOQSchema = new schema({
       type: String,
       required: true
    },
+   top3: {
+      type: Number,
+      default: 0
+   },
    uom: {
       type: String,
       required: true

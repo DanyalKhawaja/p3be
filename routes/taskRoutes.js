@@ -26,6 +26,9 @@ router.delete("/:taskId/:projectId", taskController.remove);
 
 router.post("/wbs", taskController.wbs);
 
+
+router.put("/wbs", taskController.updateWorkPackages);
+
 /*
  * GET Task By ID
  */
@@ -35,7 +38,10 @@ router.get("/byTaskIdAndProjectId/:id/:projectId", taskController.show);
  * GET Username By ID
  */
 router.get("/byProject/:id", taskController.showTaskByProjectId);
+router.get("/executionsPendingbyProject/:id", taskController.showExecutionsPendingByProjectId);
 router.get("/wptasksByProject/:id", taskController.showWPTasksByProjectId);
+router.get("/executedTasksbyProject/:id", taskController.showExecutedTasksByProjectId);
+
 
 /*
  * GET First Name By ID

@@ -22,15 +22,15 @@ module.exports = {
         const LOGMESSAGE = DATETIME + "|monitoring List found";
         log.write("INFO", LOGMESSAGE);
         return res.json({ success: true, data: monitoring });
-      });      
+      });
     } catch (error) {
       const LOGMESSAGE = DATETIME + "|" + error.message;
-        log.write("ERROR", LOGMESSAGE);
-        return res.status(500).json({
-          success: false,
-          msg: "Error when getting monitoring.",
-          error: error
-        });
+      log.write("ERROR", LOGMESSAGE);
+      return res.status(500).json({
+        success: false,
+        msg: "Error when getting monitoring.",
+        error: error
+      });
     }
 
   },
@@ -62,15 +62,15 @@ module.exports = {
         log.write("INFO", LOGMESSAGE);
         return res.json({ success: true, data: monitoring });
         // return res.json(monitoring);
-      });      
+      });
     } catch (error) {
       const LOGMESSAGE = DATETIME + "|" + error.message;
-        log.write("ERROR", LOGMESSAGE);
-        return res.status(500).json({
-          success: false,
-          msg: "Error when getting monitoring.",
-          error: error
-        });
+      log.write("ERROR", LOGMESSAGE);
+      return res.status(500).json({
+        success: false,
+        msg: "Error when getting monitoring.",
+        error: error
+      });
     }
 
   },
@@ -100,15 +100,15 @@ module.exports = {
         log.write("INFO", LOGMESSAGE);
         return res.json({ success: true, data: monitoring });
         // return res.json(monitoring);
-      }); 
+      });
     } catch (error) {
       const LOGMESSAGE = DATETIME + "|" + error.message;
-        log.write("ERROR", LOGMESSAGE);
-        return res.status(500).json({
-          success: false,
-          msg: "Error when getting monitoring.",
-          error: error
-        });
+      log.write("ERROR", LOGMESSAGE);
+      return res.status(500).json({
+        success: false,
+        msg: "Error when getting monitoring.",
+        error: error
+      });
     }
   },
 
@@ -139,17 +139,17 @@ module.exports = {
         const LOGMESSAGE = DATETIME + "| monitoring found";
         log.write("INFO", LOGMESSAGE);
         return res.status(200).json({ success: true, data: monitoring });
-      });    
+      });
     } catch (error) {
       const LOGMESSAGE = DATETIME + "|" + error.message;
-        log.write("ERROR", LOGMESSAGE);
-        return res.status(500).json({
-          success: false,
-          msg: "Error when getting monitoring.",
-          error: error
-        });
+      log.write("ERROR", LOGMESSAGE);
+      return res.status(500).json({
+        success: false,
+        msg: "Error when getting monitoring.",
+        error: error
+      });
     }
-  
+
   },
   showTaskWithMonitoring: function (req, res) {
     try {
@@ -176,95 +176,95 @@ module.exports = {
         const LOGMESSAGE = DATETIME + "| monitoring found";
         log.write("INFO", LOGMESSAGE);
         return res.status(200).json({ success: true, data: monitoring });
-      });    
+      });
     } catch (error) {
       const LOGMESSAGE = DATETIME + "|" + error.message;
-        log.write("ERROR", LOGMESSAGE);
-        return res.status(500).json({
-          success: false,
-          msg: "Error when getting monitoring.",
-          error: error
-        });
+      log.write("ERROR", LOGMESSAGE);
+      return res.status(500).json({
+        success: false,
+        msg: "Error when getting monitoring.",
+        error: error
+      });
     }
-  
+
   },
   showTaskWithNoMonitoring: function (req, res) {
     try {
       const DATETIME = dateFormat(new Date(), "yyyy-mm-dd HH:MM:ss");
-    var id = req.params.projectId;
-    var plannedStartDate = req.params.plannedStartDate;
-    console.log((plannedStartDate < DATETIME), plannedStartDate, DATETIME)
-    if (!(plannedStartDate < DATETIME)) {
-      const LOGMESSAGE = DATETIME + "|Planned start date must be less than current date";
-      log.write("ERROR", LOGMESSAGE);
-      return res.status(400).json({
-        success: false,
-        msg: "Planned start date must be less than current date"
-      });
-    }
-    taskModel.find({ project: id, plannedStartDate: plannedStartDate }).exec(function (err, task) {
-      // const LOGMESSAGE = DATETIME + "| monitoring found";
-      // log.write("INFO", LOGMESSAGE);
-      // return res.status(200).json({ success: true, data: task });
-      var tasks = [];
-      task.forEach(
-        function (row) {
-          tasks.push(row.taskId);
+      var id = req.params.projectId;
+      var plannedStartDate = req.params.plannedStartDate;
+      console.log((plannedStartDate < DATETIME), plannedStartDate, DATETIME)
+      if (!(plannedStartDate < DATETIME)) {
+        const LOGMESSAGE = DATETIME + "|Planned start date must be less than current date";
+        log.write("ERROR", LOGMESSAGE);
+        return res.status(400).json({
+          success: false,
+          msg: "Planned start date must be less than current date"
         });
-      console.log(tasks)
-      monitoringModel.find({ task: tasks }).exec(function (err, monitoring) {
-        if (err) {
-          const LOGMESSAGE = DATETIME + "|" + err.message;
-          log.write("ERROR", LOGMESSAGE);
-          return res.status(500).json({
-            success: false,
-            msg: "Error when getting monitoring.",
-            error: err
+      }
+      taskModel.find({ project: id, plannedStartDate: plannedStartDate }).exec(function (err, task) {
+        // const LOGMESSAGE = DATETIME + "| monitoring found";
+        // log.write("INFO", LOGMESSAGE);
+        // return res.status(200).json({ success: true, data: task });
+        var tasks = [];
+        task.forEach(
+          function (row) {
+            tasks.push(row.taskId);
           });
-        }
-        if (!monitoring) {
-          const LOGMESSAGE = DATETIME + "|No such monitoring";
-          log.write("ERROR", LOGMESSAGE);
-          return res.status(404).json({
-            success: false,
-            msg: "No such monitoring"
-          });
-        }
-        // console.log(monitoring)
-        if (monitoring && monitoring.length == 0) {
-          const LOGMESSAGE = DATETIME + "| monitoring found";
-          log.write("INFO", LOGMESSAGE);
-          return res.status(200).json({ success: true, data: task });
-        } else {
-          var taskResult = []
-          task.forEach(async (element, index) => {
-            // console.log(monitoring)
-            var result = searchNoMonitoring(element,monitoring);
-            // console.log(result)
-            if (result) {
-              taskResult.push(result);
-            }
-            if (index == task.length - 1) {
-              const LOGMESSAGE = DATETIME + "| monitoring found";
-              log.write("INFO", LOGMESSAGE);
-              return res.status(200).json({ success: true, data: taskResult });
-            }
-          });
+        console.log(tasks)
+        monitoringModel.find({ task: tasks }).exec(function (err, monitoring) {
+          if (err) {
+            const LOGMESSAGE = DATETIME + "|" + err.message;
+            log.write("ERROR", LOGMESSAGE);
+            return res.status(500).json({
+              success: false,
+              msg: "Error when getting monitoring.",
+              error: err
+            });
+          }
+          if (!monitoring) {
+            const LOGMESSAGE = DATETIME + "|No such monitoring";
+            log.write("ERROR", LOGMESSAGE);
+            return res.status(404).json({
+              success: false,
+              msg: "No such monitoring"
+            });
+          }
+          // console.log(monitoring)
+          if (monitoring && monitoring.length == 0) {
+            const LOGMESSAGE = DATETIME + "| monitoring found";
+            log.write("INFO", LOGMESSAGE);
+            return res.status(200).json({ success: true, data: task });
+          } else {
+            var taskResult = []
+            task.forEach(async (element, index) => {
+              // console.log(monitoring)
+              var result = searchNoMonitoring(element, monitoring);
+              // console.log(result)
+              if (result) {
+                taskResult.push(result);
+              }
+              if (index == task.length - 1) {
+                const LOGMESSAGE = DATETIME + "| monitoring found";
+                log.write("INFO", LOGMESSAGE);
+                return res.status(200).json({ success: true, data: taskResult });
+              }
+            });
 
-        }
+          }
 
+        });
       });
-    });  
     } catch (error) {
       const LOGMESSAGE = DATETIME + "|" + error.message;
-        log.write("ERROR", LOGMESSAGE);
-        return res.status(500).json({
-          success: false,
-          msg: "Error when getting monitoring.",
-          error: error
-        });
+      log.write("ERROR", LOGMESSAGE);
+      return res.status(500).json({
+        success: false,
+        msg: "Error when getting monitoring.",
+        error: error
+      });
     }
-    
+
   },
   showTaskWithPlannedStatDate: function (req, res) {
     try {
@@ -312,12 +312,12 @@ module.exports = {
           if (monitoring && monitoring.length == 0) {
             const LOGMESSAGE = DATETIME + "| no task and monitoring found with this Planned Start Date";
             log.write("INFO", LOGMESSAGE);
-            return res.status(200).json({ success: true, msg:"no task and monitoring found with this Planned Start Date",data: monitoring });
+            return res.status(200).json({ success: true, msg: "no task and monitoring found with this Planned Start Date", data: monitoring });
           } else {
             var taskResult = []
             task.forEach(async (element, index) => {
-  
-              var result = searchWithPlannedStartDate(element,monitoring)
+
+              var result = searchWithPlannedStartDate(element, monitoring)
               if (result) {
                 taskResult.push(result);
               }
@@ -327,21 +327,21 @@ module.exports = {
                 return res.status(200).json({ success: true, data: taskResult });
               }
             });
-  
+
           }
-  
+
         });
       });
     } catch (error) {
       const LOGMESSAGE = DATETIME + "|" + error.message;
-        log.write("ERROR", LOGMESSAGE);
-        return res.status(500).json({
-          success: false,
-          msg: "Error when getting monitoring.",
-          error: error
-        });
+      log.write("ERROR", LOGMESSAGE);
+      return res.status(500).json({
+        success: false,
+        msg: "Error when getting monitoring.",
+        error: error
+      });
     }
-  
+
   },
   showTaskWithPlannedStatDateOld: function (req, res) {
     try {
@@ -368,15 +368,15 @@ module.exports = {
         const LOGMESSAGE = DATETIME + "| monitoring found";
         log.write("INFO", LOGMESSAGE);
         return res.status(200).json({ success: true, data: monitoring });
-      });      
+      });
     } catch (error) {
       const LOGMESSAGE = DATETIME + "|" + error.message;
-        log.write("ERROR", LOGMESSAGE);
-        return res.status(500).json({
-          success: false,
-          msg: "Error when getting monitoring.",
-          error: error
-        });
+      log.write("ERROR", LOGMESSAGE);
+      return res.status(500).json({
+        success: false,
+        msg: "Error when getting monitoring.",
+        error: error
+      });
     }
 
   },
@@ -384,21 +384,23 @@ module.exports = {
   create: function (req, res) {
     try {
       const DATETIME = dateFormat(new Date(), "yyyy-mm-dd HH:MM:ss");
-      var monitoring = new monitoringModel({
-  
-  
-  
-        project: req.body.project,
-        task: req.body.task,
-        actualStartDate: req.body.actualStartDate,
-        actualEndDate: req.body.actualEndDate,
-        actualCost: req.body.actualCost,
-        completion: req.body.completion,
-        createDate: req.body.createDate,
-        createdBy: req.body.createdBy
-  
-      });
-  
+      let { body } = req;
+      // var monitoring = new monitoringModel({
+
+
+
+      //   project: req.body.project,
+      //   task: req.body.task,
+      //   actualStartDate: req.body.actualStartDate,
+      //   actualEndDate: req.body.actualEndDate,
+      //   actualCost: req.body.actualCost,
+      //   completion: req.body.completion,
+      //   createDate: req.body.createDate,
+      //   createdBy: req.body.createdBy
+
+      // });
+      var monitoring = new monitoringModel(body);
+
       monitoring.save(function (err, monitoring) {
         if (err) {
           const LOGMESSAGE = DATETIME + "|" + err.message;
@@ -416,14 +418,14 @@ module.exports = {
       });
     } catch (error) {
       const LOGMESSAGE = DATETIME + "|" + error.message;
-        log.write("ERROR", LOGMESSAGE);
-        return res.status(500).json({
-          success: false,
-          msg: "Error when getting monitoring.",
-          error: error
-        });
+      log.write("ERROR", LOGMESSAGE);
+      return res.status(500).json({
+        success: false,
+        msg: "Error when getting monitoring.",
+        error: error
+      });
     }
- 
+
   },
 
   update: function (req, res) {
@@ -454,8 +456,8 @@ module.exports = {
           monitoring.actualEndDate = req.body.actualEndDate ? req.body.actualEndDate : monitoring.actualEndDate,
           monitoring.actualCost = req.body.actualCost ? req.body.actualCost : monitoring.actualCost,
           monitoring.completion = req.body.completion ? req.body.completion : monitoring.completion,
-  
-  
+
+
           monitoring.save(function (err, monitoring) {
             if (err) {
               const LOGMESSAGE = DATETIME + "|" + err.message;
@@ -471,17 +473,17 @@ module.exports = {
             return res.json({ success: true, msg: "monitoring is updated", data: monitoring });
             // return res.json(monitoring);
           });
-      });    
+      });
     } catch (error) {
       const LOGMESSAGE = DATETIME + "|" + error.message;
-        log.write("ERROR", LOGMESSAGE);
-        return res.status(500).json({
-          success: false,
-          msg: "Error when getting monitoring.",
-          error: error
-        });
+      log.write("ERROR", LOGMESSAGE);
+      return res.status(500).json({
+        success: false,
+        msg: "Error when getting monitoring.",
+        error: error
+      });
     }
-  
+
   },
 
   remove: function (req, res) {
@@ -510,15 +512,15 @@ module.exports = {
         log.write("INFO", LOGMESSAGE);
         return res.json({ success: true, msg: "monitoring is Deleted" });
         // return res.status(204).json();
-      });      
+      });
     } catch (error) {
       const LOGMESSAGE = DATETIME + "|" + error.message;
-        log.write("ERROR", LOGMESSAGE);
-        return res.status(500).json({
-          success: false,
-          msg: "Error when getting monitoring.",
-          error: error
-        });
+      log.write("ERROR", LOGMESSAGE);
+      return res.status(500).json({
+        success: false,
+        msg: "Error when getting monitoring.",
+        error: error
+      });
     }
 
   }
@@ -526,8 +528,8 @@ module.exports = {
 searchNoMonitoring = (key, inputArray) => {
 
   var result = []
-  result  = inputArray.find(item => item.task == key.taskId)
-  if(!result){
+  result = inputArray.find(item => item.task == key.taskId)
+  if (!result) {
     return key;
   }
   // for (let i=0; i < inputArray.length; i++) {
@@ -539,11 +541,11 @@ searchNoMonitoring = (key, inputArray) => {
 }
 searchWithPlannedStartDate = (key, inputArray) => {
   var result = []
-  result  = inputArray.find(item => item.task == key.taskId)
+  result = inputArray.find(item => item.task == key.taskId)
 
-  if(result){
+  if (result) {
     // key["monitoring"]= result
-    Object.assign(key, {monitoring: result});
+    Object.assign(key, { monitoring: result });
     console.log(key)
     console.log(result)
     return key;

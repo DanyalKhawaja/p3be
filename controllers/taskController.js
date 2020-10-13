@@ -4,7 +4,9 @@ var mongoose = require("mongoose");
 const ObjectId = mongoose.Types.ObjectId;
 
 const taskModel = require("../models/taskModel");
-
+const monitoringModel = require("../models/monitoringModel");
+const taskUtilizedResourceModel = require("../models/taskUtilizedResourceBaseModel");
+const taskPlannedResourceModel = require("../models/taskPlannedResourceBaseModel");
 const log = require("../lib/logger");
 
 module.exports = {
@@ -76,6 +78,50 @@ module.exports = {
       });
     }
   },
+
+  showExecutionsPendingByProjectId: function (req, res) {
+    try {
+      const DATETIME = dateFormat(new Date(), "yyyy-mm-dd HH:MM:ss");
+      var id = req.params.id;
+
+      taskModel
+        .find({ project: id, actualStartDate: null }, function (err, task) {
+          if (err) {
+            const LOGMESSAGE = DATETIME + "|" + err.message;
+            log.write("ERROR", LOGMESSAGE);
+            return res.status(500).json({
+              success: false,
+              msg: "Error when getting task.",
+              error: err,
+            });
+          }
+          if (!task) {
+            const LOGMESSAGE = DATETIME + "|NO Such task of project:" + id;
+            log.write("ERROR", LOGMESSAGE);
+            return res.status(404).json({
+              success: false,
+              msg: "No such task",
+            });
+          }
+          const LOGMESSAGE = DATETIME + "|task found of project:" + id;
+          log.write("INFO", LOGMESSAGE);
+          return res.json({ success: true, data: task });
+          // return res.json(task);
+        })
+        .sort({ taskId: 1 })
+        .populate("ProjectLocation", "projectLocationName");
+    } catch (error) {
+      const LOGMESSAGE = DATETIME + "|" + error.message;
+      log.write("ERROR", LOGMESSAGE);
+      return res.status(500).json({
+        success: false,
+        msg: "Error when getting task.",
+        error: error,
+      });
+    }
+  },
+
+
   showTaskByProjectId: function (req, res) {
     try {
       const DATETIME = dateFormat(new Date(), "yyyy-mm-dd HH:MM:ss");
@@ -117,13 +163,13 @@ module.exports = {
       });
     }
   },
-  showWPTasksByProjectId: function (req, res) {
+  showExecutedTasksByProjectId: function (req, res) {
     try {
       const DATETIME = dateFormat(new Date(), "yyyy-mm-dd HH:MM:ss");
       var id = req.params.id;
 
       taskModel
-        .find({ project: id, workPackage: true }, function (err, task) {
+        .find({ project: id, actualStartDate: { $ne: null } }, function (err, task) {
           if (err) {
             const LOGMESSAGE = DATETIME + "|" + err.message;
             log.write("ERROR", LOGMESSAGE);
@@ -148,6 +194,230 @@ module.exports = {
         })
         .sort({ taskId: 1 })
         .populate("ProjectLocation", "projectLocationName");
+    } catch (error) {
+      const LOGMESSAGE = DATETIME + "|" + error.message;
+      log.write("ERROR", LOGMESSAGE);
+      return res.status(500).json({
+        success: false,
+        msg: "Error when getting task.",
+        error: error,
+      });
+    }
+  },
+  showWPTasksByProjectId: async function (req, res) {
+    const DATETIME = dateFormat(new Date(), "yyyy-mm-dd HH:MM:ss");
+    try {
+
+      var id = req.params.id;
+
+      let tasks = await taskModel
+        .find({ project: id, workPackage: true }, function (err, task) {
+          if (err) {
+            const LOGMESSAGE = DATETIME + "|" + err.message;
+            log.write("ERROR", LOGMESSAGE);
+            return res.status(500).json({
+              success: false,
+              msg: "Error when getting task.",
+              error: err,
+            });
+          }
+          if (!task) {
+            const LOGMESSAGE = DATETIME + "|NO Such task of project:" + id;
+            log.write("ERROR", LOGMESSAGE);
+            return res.status(404).json({
+              success: false,
+              msg: "No such task",
+            });
+          }
+          const LOGMESSAGE = DATETIME + "|task found of project:" + id;
+          log.write("INFO", LOGMESSAGE);
+
+          // return res.json(task);
+        })
+        .sort({ taskId: 1 })
+        .populate("ProjectLocation", "projectLocationName");
+        const calcs = {};
+      let query = [
+        { $match: { project: ObjectId(id) } },
+        { $group: { _id: "$task", costOccured: { $sum: "$actualCost" } } }
+      ];
+
+      let totalsBreakup = await monitoringModel.aggregate(query);
+      let actualCost = totalsBreakup.reduce((total, {costOccured})=>(total+costOccured),0)
+      let data = await taskModel.find({ project: ObjectId(id), parentTask: '' }).lean();
+      let budgetAtCompletion = data.reduce((total,{plannedCost}) => ( total + plannedCost),0);
+      
+
+
+query = [{$match:{project: ObjectId(id), workPackage: true}},{ $group:{ _id: {expired: {$gt:["$plannedEndDate",new Date()]}},count: {$sum: 1}}}];
+data = await taskModel.aggregate(query);
+let plannedCompletion = data[0].count/(data[0].count+data[1].count);
+
+let plannedValue = budgetAtCompletion*plannedCompletion;
+
+query = [{$match:{project: ObjectId(id), completion: 100}}, { $group:{ _id: null,count: {$sum: 1}}}];
+let mdata = await monitoringModel.aggregate(query);
+let actualCompletion = (mdata.length > 0 ? mdata[0].count / (data[0].count+data[1].count) : 0);
+let earnedValue = actualCompletion * budgetAtCompletion;
+let costVariance = earnedValue - actualCost;
+let scheduleVariance = earnedValue - plannedValue;
+let scheduleVarianceInDays = scheduleVariance * 30;
+let scheduleStatus = "On Schedule";
+if (scheduleVariance > 0) scheduleStatus = "Ahead of schedule";
+if (scheduleVariance < 0) scheduleStatus = "Behind schedule";
+let costStatus = "On budget";
+if (costVariance > 0) costStatus = "Under budget";
+if (costVariance < 0) costStatus = "Over budget";
+let CPI = earnedValue / actualCost;
+let SPI = earnedValue / plannedValue;
+let v = ((budgetAtCompletion - earnedValue)/(SPI * CPI));
+let estimateAtCompletion = actualCost + (v != Infinity ? v : 0);
+let varianceAtCompletion = budgetAtCompletion - estimateAtCompletion;
+v= (estimateAtCompletion - actualCost);
+let TCPI = v != 0 ? ((budgetAtCompletion - earnedValue) / (estimateAtCompletion - actualCost)) : 0;
+
+
+
+      query = [
+        {
+          $match: {
+            $and: [{ project: ObjectId(id) }, { $or: [{ boqType: '1' }, { "__type": "TaskUtilizedResource" }] }]
+          }
+        }, {
+          $group: { _id: { task: "$task" }, total: { $sum: { $multiply: ["$actualCostPerUnit", "$quantity"] } }, qty: { $sum: "$quantity" } }
+        }
+      ];
+      let actualResourceBreakup = (await taskUtilizedResourceModel.aggregate(query)).reduce((obj, row) => {
+        if (!obj[row._id.task]) obj[row._id.task] = {};
+        obj[row._id.task] =  { qty: row.qty, total: row.total  };
+        return obj;
+      }, {});;
+
+      query = [
+        {
+          $match: {
+            $and: [{ project: ObjectId(id) }, { $or: [{ boqType: '1' }, { "__type": "TaskPlannedResource" }] }]
+          }
+        }, {
+          $group: { _id: { task: "$task" }, total: { $sum: { $multiply: ["$cost", "$quantity"] } }, qty: { $sum: "$quantity" } }
+        }
+      ];
+
+      let plannedResourceBreakup = (await taskPlannedResourceModel.aggregate(query)).reduce((obj, row) => {
+        if (!obj[row._id.task]) obj[row._id.task] = {};
+        obj[row._id.task] =  { qty: row.qty, total: row.total  };
+        return obj;
+      }, {});;
+
+      query = [
+        {
+          $match: {
+            $and: [{ project: ObjectId(id) }, { boqType: '1' }]
+          }
+        }, {
+          $group: { _id: { task: "$task" }, total: { $sum: { $multiply: ["$actualCostPerUnit", "$quantity"] } }, qty: { $sum: "$quantity" } }
+        }
+      ];
+      let actualLaborBreakup = (await taskUtilizedResourceModel.aggregate(query)).reduce((obj, row) => {
+        if (!obj[row._id.task]) obj[row._id.task] = {};
+        obj[row._id.task] =  { qty: row.qty, total: row.total } ;
+        return obj;
+      }, {});;
+
+
+      query = [
+        {
+          $match: {
+            $and: [{ project: ObjectId(id) }, { boqType: '1' }]
+          }
+        }, {
+          $group: { _id: { task: "$task" }, total: { $sum: { $multiply: ["$cost", "$quantity"] } }, qty: { $sum: "$quantity" } }
+        }
+      ];
+      let plannedLaborBreakup = (await taskPlannedResourceModel.aggregate(query)).reduce((obj, row) => {
+        if (!obj[row._id.task]) obj[row._id.task] = {};
+        obj[row._id.task] = {   qty: row.qty, total: row.total  };
+        return obj;
+      }, {});
+
+
+      query = [
+        {
+          $match: {
+            $and: [{ project: ObjectId(id) }, { boqType: '3' }]
+          }
+        }, {
+          $group: { _id: { task: "$task" }, total: { $sum: { $multiply: ["$actualCostPerUnit", "$quantity"] } }, qty: { $sum: "$quantity" } }
+        }
+      ];
+      let actualContractorEquipmentBreakup = (await taskUtilizedResourceModel.aggregate(query)).reduce((obj, row) => {
+        if (!obj[row._id.task]) obj[row._id.task] = {};
+        obj[row._id.task] =  { qty: row.qty, total: row.total  };
+        return obj;
+      }, {});
+
+
+      query = [
+        {
+          $match: {
+            $and: [{ project: ObjectId(id) }, { boqType: '3' }]
+          }
+        }, {
+          $group: { _id: { task: "$task" }, total: { $sum: { $multiply: ["$cost", "$quantity"] } }, qty: { $sum: "$quantity" } }
+        }
+      ];
+      let plannedContractorEquipmentBreakup = (await taskPlannedResourceModel.aggregate(query)).reduce((obj, row) => {
+        if (!obj[row._id.task]) obj[row._id.task] = {};
+        obj[row._id.task] =  { qty: row.qty, total: row.total  };
+        return obj;
+      }, {});
+;
+
+      query = [
+        {
+          $match: {
+            $and: [{ project: ObjectId(id) }, { boqType: '4' }, { top3: { $ne: 0 } }]
+          }
+        }, {
+          $group: { _id: { task: "$task", rankId: "$top3", material: "$description" }, total: { $sum: { $multiply: ["$cost", "$quantity"] } }, qty: { $sum: "$quantity" } }
+        }
+      ];
+      let consumableMaterialBreakup = (await taskPlannedResourceModel.aggregate(query)).reduce((obj, row) => {
+        if (!obj[row._id.task]) obj[row._id.task] = {};
+        obj[row._id.task][row._id.rankId] = { material: row._id.material, Planned: { qty: row.qty, total: row.total } };
+        return obj;
+      }, {});
+
+      query = [
+        {
+          $match: {
+            $and: [{ project: ObjectId(id) }, { boqType: '4' }, { top3: { $ne: 0 } }]
+          }
+        }, {
+          $group: { _id: { task: "$task", rankId: "$top3" }, total: { $sum: { $multiply: ["$actualCostPerUnit", "$quantity"] } }, qty: { $sum: "$quantity" } }
+        }
+      ];
+
+      // let consumableMaterialBreakup = (await taskUtilizedResourceModel.aggregate(query)).reduce((obj, row) => {
+      //   // if (!obj[row._id.task]) obj[row._id.task] = {};
+      //   obj[row._id.task][row._id.rankId].Actual = {  qty: row.qty, total: row.total };
+      //   return obj;
+      // }, plannedConsumableMaterialBreakup);
+
+      (await taskUtilizedResourceModel.aggregate(query)).forEach(row => {
+        consumableMaterialBreakup[row._id.task][row._id.rankId].Actual = { qty: row.qty, total: row.total };
+      });
+
+
+
+
+      return res.json({ success: true, data: { estimateAtCompletion,TCPI,scheduleVarianceInDays, scheduleStatus,costVariance,costStatus,CPI,SPI,varianceAtCompletion,budgetAtCompletion, tasks, monitoringsCost: totalsBreakup, actualLaborBreakup, plannedLaborBreakup, actualResourceBreakup, plannedResourceBreakup, actualContractorEquipmentBreakup, plannedContractorEquipmentBreakup, consumableMaterialBreakup} });
+
+
+
+
+
+
     } catch (error) {
       const LOGMESSAGE = DATETIME + "|" + error.message;
       log.write("ERROR", LOGMESSAGE);
@@ -463,13 +733,14 @@ module.exports = {
           const LOGMESSAGE = DATETIME + "|task created";
           log.write("INFO", LOGMESSAGE);
           // return res.status(201).json(task);
+          return res.json({
+            success: true,
+            msg: req.body.length + " task(s) created",
+            data: data,
+          });
         });
 
-        return res.json({
-          success: true,
-          msg: req.body.length + " task(s) created",
-          data: "success",
-        });
+
       });
     } catch (error) {
       const LOGMESSAGE = DATETIME + "|" + error.message;
@@ -482,6 +753,68 @@ module.exports = {
     }
   },
 
+  updateWorkPackages: function (req, res) {
+    try {
+      const DATETIME = dateFormat(new Date(), "yyyy-mm-dd HH:MM:ss");
+      var id = req.params.id;
+      var arrBody = req.body.workPackages;
+      arrBody.forEach((element, index) => {
+        // console.log(element)
+        taskModel.findOne({ _id: element._id }, function (err, task) {
+          if (err) {
+            const LOGMESSAGE = DATETIME + "|" + err.message;
+            log.write("ERROR", LOGMESSAGE);
+            return res.status(500).json({
+              success: false,
+              msg: "Error when getting task",
+              error: err,
+            });
+          }
+          if (!task) {
+            const LOGMESSAGE =
+              DATETIME + "|No such task to update:" + element._id;
+            log.write("ERROR", LOGMESSAGE);
+            return res.status(404).json({
+              success: false,
+              msg: "No such task with id" + element._id,
+            });
+          }
+          if (element.actualStartDate) task.actualStartDate = element.actualStartDate;
+          if (element.completed) task.completed = element.completed;
+          task.updatedDate = DATETIME;
+          task.updatedBy = element.updatedBy
+            ? element.updatedBy
+            : task.updatedBy;
+          // console.log(task)
+          task.save(function (err, task) {
+            if (err) {
+              const LOGMESSAGE = DATETIME + "|" + err.message;
+              log.write("ERROR", LOGMESSAGE);
+              return res.status(500).json({
+                success: false,
+                msg: "Error when updating task.",
+                error: err,
+              });
+            }
+            if (index == arrBody.length - 1) {
+              const LOGMESSAGE = DATETIME + "|Updated task:" + id;
+              log.write("INFO", LOGMESSAGE);
+              return res.json({ success: true, msg: "task list is updated" });
+            }
+            // return res.json(task);
+          });
+        });
+      });
+    } catch (error) {
+      const LOGMESSAGE = DATETIME + "|" + error.message;
+      log.write("ERROR", LOGMESSAGE);
+      return res.status(500).json({
+        success: false,
+        msg: "Error when getting task.",
+        error: error,
+      });
+    }
+  },
   update: function (req, res) {
     try {
       const DATETIME = dateFormat(new Date(), "yyyy-mm-dd HH:MM:ss");

@@ -7,10 +7,10 @@ var monitoringSchema = new schema(
         type: mongoose.Schema.ObjectId, ref: 'Project', required: true
     },
     task: { 
-      type: Number, ref: 'Task',  required: true
+      type: mongoose.Schema.ObjectId, ref: 'Task',  required: true
+      
     },
-    actualStartDate: { type: Date, default: Date.now  },
-    actualEndDate: { type: Date, default: Date.now  },
+    monitoringDate: { type: Date,  default: Date.now },
     actualCost: { type: Number, required: true },
     completion: { type: Number, required:true },
     createdDate: { type: Date, default: Date.now },
@@ -19,4 +19,3 @@ var monitoringSchema = new schema(
 );
   
 module.exports = mongoose.model("Monitoring", monitoringSchema);
-
