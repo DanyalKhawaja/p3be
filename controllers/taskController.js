@@ -236,45 +236,44 @@ module.exports = {
         })
         .sort({ taskId: 1 })
         .populate("ProjectLocation", "projectLocationName");
-        const calcs = {};
+      const calcs = {};
       let query = [
         { $match: { project: ObjectId(id) } },
         { $group: { _id: "$task", costOccured: { $sum: "$actualCost" } } }
       ];
 
       let totalsBreakup = await monitoringModel.aggregate(query);
-      let actualCost = totalsBreakup.reduce((total, {costOccured})=>(total+costOccured),0)
+      let actualCost = totalsBreakup.reduce((total, { costOccured }) => (total + costOccured), 0)
       let data = await taskModel.find({ project: ObjectId(id), parentTask: '' }).lean();
-      let budgetAtCompletion = data.reduce((total,{plannedCost}) => ( total + plannedCost),0);
-      
+      let budgetAtCompletion = data.reduce((total, { plannedCost }) => (total + plannedCost), 0);
 
 
-query = [{$match:{project: ObjectId(id), workPackage: true}},{ $group:{ _id: {expired: {$gt:["$plannedEndDate",new Date()]}},count: {$sum: 1}}}];
-data = await taskModel.aggregate(query);
-let plannedCompletion = data[0].count/(data[0].count+data[1].count);
+      query = [{ $match: { project: ObjectId(id), plannedStartDate: { $lt: new Date() }, workPackage: true } }, { $group: { _id: { completed: { $eq: ["$completed", 100] } }, count: { $sum: 1 } } }];
+      data = await taskModel.aggregate(query);
+      let plannedCompletion = data[0].count / (data[0].count + data[1].count);
 
-let plannedValue = budgetAtCompletion*plannedCompletion;
+      let plannedValue = budgetAtCompletion * plannedCompletion;
 
-query = [{$match:{project: ObjectId(id), completion: 100}}, { $group:{ _id: null,count: {$sum: 1}}}];
-let mdata = await monitoringModel.aggregate(query);
-let actualCompletion = (mdata.length > 0 ? mdata[0].count / (data[0].count+data[1].count) : 0);
-let earnedValue = actualCompletion * budgetAtCompletion;
-let costVariance = earnedValue - actualCost;
-let scheduleVariance = earnedValue - plannedValue;
-let scheduleVarianceInDays = scheduleVariance * 30;
-let scheduleStatus = "On Schedule";
-if (scheduleVariance > 0) scheduleStatus = "Ahead of schedule";
-if (scheduleVariance < 0) scheduleStatus = "Behind schedule";
-let costStatus = "On budget";
-if (costVariance > 0) costStatus = "Under budget";
-if (costVariance < 0) costStatus = "Over budget";
-let CPI = earnedValue / actualCost;
-let SPI = earnedValue / plannedValue;
-let v = ((budgetAtCompletion - earnedValue)/(SPI * CPI));
-let estimateAtCompletion = actualCost + (v != Infinity ? v : 0);
-let varianceAtCompletion = budgetAtCompletion - estimateAtCompletion;
-v= (estimateAtCompletion - actualCost);
-let TCPI = v != 0 ? ((budgetAtCompletion - earnedValue) / (estimateAtCompletion - actualCost)) : 0;
+      query = [{ $match: { project: ObjectId(id), completion: 100 } }, { $group: { _id: null, count: { $sum: 1 } } }];
+      let mdata = await monitoringModel.aggregate(query);
+      let actualCompletion = (mdata.length > 0 ? mdata[0].count / (data[0].count + data[1].count) : 0);
+      let earnedValue = actualCompletion * budgetAtCompletion;
+      let costVariance = earnedValue - actualCost;
+      let scheduleVariance = earnedValue - plannedValue;
+      let scheduleVarianceInDays = scheduleVariance * 30;
+      let scheduleStatus = "On Schedule";
+      if (scheduleVariance > 0) scheduleStatus = "Ahead of schedule";
+      if (scheduleVariance < 0) scheduleStatus = "Behind schedule";
+      let costStatus = "On budget";
+      if (costVariance > 0) costStatus = "Under budget";
+      if (costVariance < 0) costStatus = "Over budget";
+      let CPI = earnedValue / actualCost;
+      let SPI = earnedValue / plannedValue;
+      let v = ((budgetAtCompletion - earnedValue) / (SPI * CPI));
+      let estimateAtCompletion = actualCost + (v != Infinity ? v : 0);
+      let varianceAtCompletion = budgetAtCompletion - estimateAtCompletion;
+      v = (estimateAtCompletion - actualCost);
+      let TCPI = v != 0 ? ((budgetAtCompletion - earnedValue) / (estimateAtCompletion - actualCost)) : 0;
 
 
 
@@ -289,7 +288,7 @@ let TCPI = v != 0 ? ((budgetAtCompletion - earnedValue) / (estimateAtCompletion 
       ];
       let actualResourceBreakup = (await taskUtilizedResourceModel.aggregate(query)).reduce((obj, row) => {
         if (!obj[row._id.task]) obj[row._id.task] = {};
-        obj[row._id.task] =  { qty: row.qty, total: row.total  };
+        obj[row._id.task] = { qty: row.qty, total: row.total };
         return obj;
       }, {});;
 
@@ -305,7 +304,7 @@ let TCPI = v != 0 ? ((budgetAtCompletion - earnedValue) / (estimateAtCompletion 
 
       let plannedResourceBreakup = (await taskPlannedResourceModel.aggregate(query)).reduce((obj, row) => {
         if (!obj[row._id.task]) obj[row._id.task] = {};
-        obj[row._id.task] =  { qty: row.qty, total: row.total  };
+        obj[row._id.task] = { qty: row.qty, total: row.total };
         return obj;
       }, {});;
 
@@ -320,7 +319,7 @@ let TCPI = v != 0 ? ((budgetAtCompletion - earnedValue) / (estimateAtCompletion 
       ];
       let actualLaborBreakup = (await taskUtilizedResourceModel.aggregate(query)).reduce((obj, row) => {
         if (!obj[row._id.task]) obj[row._id.task] = {};
-        obj[row._id.task] =  { qty: row.qty, total: row.total } ;
+        obj[row._id.task] = { qty: row.qty, total: row.total };
         return obj;
       }, {});;
 
@@ -336,7 +335,7 @@ let TCPI = v != 0 ? ((budgetAtCompletion - earnedValue) / (estimateAtCompletion 
       ];
       let plannedLaborBreakup = (await taskPlannedResourceModel.aggregate(query)).reduce((obj, row) => {
         if (!obj[row._id.task]) obj[row._id.task] = {};
-        obj[row._id.task] = {   qty: row.qty, total: row.total  };
+        obj[row._id.task] = { qty: row.qty, total: row.total };
         return obj;
       }, {});
 
@@ -352,7 +351,7 @@ let TCPI = v != 0 ? ((budgetAtCompletion - earnedValue) / (estimateAtCompletion 
       ];
       let actualContractorEquipmentBreakup = (await taskUtilizedResourceModel.aggregate(query)).reduce((obj, row) => {
         if (!obj[row._id.task]) obj[row._id.task] = {};
-        obj[row._id.task] =  { qty: row.qty, total: row.total  };
+        obj[row._id.task] = { qty: row.qty, total: row.total };
         return obj;
       }, {});
 
@@ -368,10 +367,10 @@ let TCPI = v != 0 ? ((budgetAtCompletion - earnedValue) / (estimateAtCompletion 
       ];
       let plannedContractorEquipmentBreakup = (await taskPlannedResourceModel.aggregate(query)).reduce((obj, row) => {
         if (!obj[row._id.task]) obj[row._id.task] = {};
-        obj[row._id.task] =  { qty: row.qty, total: row.total  };
+        obj[row._id.task] = { qty: row.qty, total: row.total };
         return obj;
       }, {});
-;
+      ;
 
       query = [
         {
@@ -411,7 +410,7 @@ let TCPI = v != 0 ? ((budgetAtCompletion - earnedValue) / (estimateAtCompletion 
 
 
 
-      return res.json({ success: true, data: { estimateAtCompletion,TCPI,scheduleVarianceInDays, scheduleStatus,costVariance,costStatus,CPI,SPI,varianceAtCompletion,budgetAtCompletion, tasks, monitoringsCost: totalsBreakup, actualLaborBreakup, plannedLaborBreakup, actualResourceBreakup, plannedResourceBreakup, actualContractorEquipmentBreakup, plannedContractorEquipmentBreakup, consumableMaterialBreakup} });
+      return res.json({ success: true, data: { estimateAtCompletion, TCPI, scheduleVarianceInDays, scheduleStatus, costVariance, costStatus, CPI, SPI, varianceAtCompletion, budgetAtCompletion, tasks, monitoringsCost: totalsBreakup, actualLaborBreakup, plannedLaborBreakup, actualResourceBreakup, plannedResourceBreakup, actualContractorEquipmentBreakup, plannedContractorEquipmentBreakup, consumableMaterialBreakup } });
 
 
 
