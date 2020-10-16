@@ -85,7 +85,7 @@ module.exports = {
       var id = req.params.id;
 
       taskModel
-        .find({ project: id, actualStartDate: null }, function (err, task) {
+        .find({ project: id, actualStartDate: null, $or:[ {$and:[{ plannedStartDate: { $lte: new Date()}},{workPackage: true}] },{workPackage: false}]}, function (err, task) {
           if (err) {
             const LOGMESSAGE = DATETIME + "|" + err.message;
             log.write("ERROR", LOGMESSAGE);
@@ -169,7 +169,11 @@ module.exports = {
       var id = req.params.id;
 
       taskModel
-        .find({ project: id, actualStartDate: { $ne: null } }, function (err, task) {
+
+
+     // .find({ project: id, actualStartDate: null, }, function (err, task) {
+
+        .find({ project: id, plannedStartDate:{$lte: new Date()}, $or:[ {$and:[{actualStartDate: { $ne: null}},{workPackage: true}] },{workPackage: false}] }, function (err, task) {
           if (err) {
             const LOGMESSAGE = DATETIME + "|" + err.message;
             log.write("ERROR", LOGMESSAGE);
