@@ -39,7 +39,7 @@ module.exports = {
       const DATETIME = dateFormat(new Date(), "yyyy-mm-dd HH:MM:ss");
       var id = req.params.id;
      
-      programBenefitMonitoringModel.findOne({ _id: id}).populate('assessmentBy', 'username').populate('benefit', 'description').exec(function (err, programBenefitMonitoring) {
+      programBenefitMonitoringModel.findOne({ benefit: id}).populate('assessmentBy', 'username').populate('benefit', 'description').exec(function (err, programBenefitMonitoring) {
         if (err) {
           const LOGMESSAGE = DATETIME + "|" + err.message;
           log.write("ERROR", LOGMESSAGE);
