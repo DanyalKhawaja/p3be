@@ -173,7 +173,7 @@ module.exports = {
 
      // .find({ project: id, actualStartDate: null, }, function (err, task) {
 
-        .find({ project: id, plannedStartDate:{$lte: new Date()}, $or:[ {$and:[{actualStartDate: { $ne: null}},{workPackage: true}] },{workPackage: false}] }, function (err, task) {
+        .find({ project: id, plannedStartDate:{$lte: new Date()}, $or:[ {$and:[{actualStartDate: { $ne: null}},{workPackage: true}, {completed: {$ne: 100 }}] },{workPackage: false}] }, function (err, task) {
           if (err) {
             const LOGMESSAGE = DATETIME + "|" + err.message;
             log.write("ERROR", LOGMESSAGE);
@@ -215,7 +215,8 @@ module.exports = {
       var id = req.params.id;
 
       let tasks = await taskModel
-        .find({ project: id, workPackage: true }, function (err, task) {
+      
+        .find({ project: id, plannedStartDate:{$lte: new Date()},  actualStartDate: { $ne: null},workPackage: true  }, function (err, task) {
           if (err) {
             const LOGMESSAGE = DATETIME + "|" + err.message;
             log.write("ERROR", LOGMESSAGE);
@@ -808,6 +809,66 @@ module.exports = {
           });
         });
       });
+    } catch (error) {
+      const LOGMESSAGE = DATETIME + "|" + error.message;
+      log.write("ERROR", LOGMESSAGE);
+      return res.status(500).json({
+        success: false,
+        msg: "Error when getting task.",
+        error: error,
+      });
+    }
+  },
+  updateWorkPackage: function (req, res) {
+    try {
+      const DATETIME = dateFormat(new Date(), "yyyy-mm-dd HH:MM:ss");
+      var id = req.params.id;
+      var element = req.body.workPackage;
+        taskModel.findOne({ _id: element._id }, function (err, task) {
+          if (err) {
+            const LOGMESSAGE = DATETIME + "|" + err.message;
+            log.write("ERROR", LOGMESSAGE);
+            return res.status(500).json({
+              success: false,
+              msg: "Error when getting task",
+              error: err,
+            });
+          }
+          if (!task) {
+            const LOGMESSAGE =
+              DATETIME + "|No such task to update:" + element._id;
+            log.write("ERROR", LOGMESSAGE);
+            return res.status(404).json({
+              success: false,
+              msg: "No such task with id" + element._id,
+            });
+          }
+          if (element.actualStartDate) task.actualStartDate = element.actualStartDate;
+          if (element.completed) task.completed = element.completed;
+          task.updatedDate = DATETIME;
+          task.updatedBy = element.updatedBy
+            ? element.updatedBy
+            : task.updatedBy;
+          // console.log(task)
+          task.save(function (err, task) {
+            if (err) {
+              const LOGMESSAGE = DATETIME + "|" + err.message;
+              log.write("ERROR", LOGMESSAGE);
+              return res.status(500).json({
+                success: false,
+                msg: "Error when updating task.",
+                error: err,
+              });
+            }
+            if (index == arrBody.length - 1) {
+              const LOGMESSAGE = DATETIME + "|Updated task:" + id;
+              log.write("INFO", LOGMESSAGE);
+              return res.json({ success: true, msg: "task list is updated" });
+            }
+            // return res.json(task);
+          });
+        });
+    
     } catch (error) {
       const LOGMESSAGE = DATETIME + "|" + error.message;
       log.write("ERROR", LOGMESSAGE);
