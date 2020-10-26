@@ -16,6 +16,12 @@ const authValidator = require('../validators/authValidator');
 router.post('/confirmation', authValidator.confirmation, authController.confirmation);
 
 /*
+ * GET confirmation user by email
+ */
+router.get('/verify/:token',  authController.verify);
+
+
+/*
  * POST resend token to verify user email
  */
 router.post('/resend',authValidator.resend, authController.resendToken);

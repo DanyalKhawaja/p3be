@@ -8,11 +8,13 @@ module.exports = {
         service:'gmail',
         host: "smtp.live.com",
         senderName: "Test Node API",
-        senderEmail: "freedevel0p3r@gmail.com",
+        senderEmail: "freedevel0p3r",
         senderPassword: "fr33d3v3l0p3r",
     },
     token: {
         secret: 'fkeym',
         expiresIn:(60000*30)
-    }
+    },
+    verificationUrl:'http://64.227.24.36:8881/verify/'
+
 }

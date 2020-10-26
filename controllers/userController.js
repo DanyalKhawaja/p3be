@@ -28,7 +28,7 @@ module.exports = {
         .populate('department', 'name')
         .populate('role', 'name')
         .populate('lineManager', 'username')
-        .populate('companyId','name' ,'company');
+        .populate('companyId', 'name','company');
     } catch (error) {
       const LOGMESSAGE = DATETIME + "|" + error.message;
       log.write("ERROR", LOGMESSAGE);
