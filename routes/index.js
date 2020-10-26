@@ -5,8 +5,8 @@ var router = express.Router();
 router.get("/", function(req, res, next) {
   // res.render("index", { title: "Database is onneted" });
   res.send({
-    title:"welcome to epress",
-    msg:"Mongodb is onnected"  })
+    title:"welcome to express",
+    msg:"Mongodb is connected"  })
 });
 
 module.exports = router;

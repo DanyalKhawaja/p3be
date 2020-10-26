@@ -51,8 +51,9 @@ const stakeholderRoleRoutes = require('./routes/stakeholderRoleRoutes')
 const benefitsNatureRoutes = require('./routes/benefitsNatureRoutes')
 const pptRoutes = require('./routes/pptRoutes')
 const pptCriteriaRoutes = require('./routes/pptCriteriaRoutes')
-const pptOptionsRoutes = require('./routes/pptOptionsRoutes')
-
+const pptOptionsRoutes = require('./routes/pptOptionsRoutes');
+const companyRoutes = require('./routes/companyRoutes')
+const subscriptionRoutes = require('./routes/subscriptionRoutes');
 mongoose
   .connect(databaseConfig.uri, {
     useNewUrlParser: true,
@@ -83,6 +84,8 @@ app.use("/", indexRouter);
 app.use("/", authRoutes);
 app.use("/user", passport.authenticate('jwt', { session: false }), userRoutes);
 app.use("/department", passport.authenticate('jwt', { session: false }), departmentRoutes);
+app.use("/company", passport.authenticate('jwt', { session: false }), companyRoutes);
+app.use("/subscription", passport.authenticate('jwt', { session: false }), subscriptionRoutes);
 app.use('/role', passport.authenticate('jwt', { session: false }), roleRoutes);
 app.use("/projecttype", passport.authenticate('jwt', { session: false }), projectTypeRoutes);
 app.use("/resourcetype", passport.authenticate('jwt', { session: false }), resourceTypeRoutes);

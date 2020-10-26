@@ -42,7 +42,8 @@ const userSchema = new schema({
       required: true
    },
    companyId: {
-      type: String,
+     type: mongoose.Schema.ObjectId,
+     ref: "Company",
       required: true
    },
    department: {

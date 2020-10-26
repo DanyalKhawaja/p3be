@@ -27,7 +27,8 @@ module.exports = {
       })
         .populate('department', 'name')
         .populate('role', 'name')
-        .populate('lineManager', 'username');
+        .populate('lineManager', 'username')
+        .populate('companyId','name' ,'company');
     } catch (error) {
       const LOGMESSAGE = DATETIME + "|" + error.message;
       log.write("ERROR", LOGMESSAGE);
@@ -65,7 +66,10 @@ module.exports = {
         const LOGMESSAGE = DATETIME + "| User found";
         log.write("INFO", LOGMESSAGE);
         return res.json({ success: true, data: user });
-      });
+      })
+      .populate('department', 'name')
+      .populate('role', 'name')
+      .populate('companyId', 'name','company');
     } catch (error) {
       const LOGMESSAGE = DATETIME + "|" + error.message;
       log.write("ERROR", LOGMESSAGE);
