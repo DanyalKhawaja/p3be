@@ -97,7 +97,11 @@ module.exports = {
         }
 
       });
-    }).populate('role', 'name, code');
+    })  
+    .populate('department', 'name')
+    .populate('role', 'name, code')
+    .populate('lineManager', 'username')
+    .populate('companyId', 'name','company');
   },
 
   //signup User
