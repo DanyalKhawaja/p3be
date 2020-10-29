@@ -15,6 +15,7 @@ module.exports = {
         secret: 'fkeym',
         expiresIn:(60000*30)
     },
-    verificationUrl:'http://64.227.24.36:8881/verify/'
+    // verificationUrl:'http://64.227.24.36:8881/verify/'
+    verificationUrl:'localhost:8881/verify/'
 
 }

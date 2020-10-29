@@ -168,7 +168,7 @@ module.exports = {
             msg: "No such role"
           });
         }
-  
+        role.code = req.body.code ? req.body.code : role.code;
         role.name = req.body.name ? req.body.name : role.name;
         role.description = req.body.description ? req.body.description : role.description;
   

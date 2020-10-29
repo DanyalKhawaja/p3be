@@ -227,6 +227,8 @@ module.exports = {
         });
       }
 
+      const pwd = req.body.password;
+ 
       // Create and save the user
       user = new userModel({
         email: req.body.email,
@@ -245,7 +247,8 @@ module.exports = {
         createdBy: req.body.createdBy,
         updatedBy: req.body.updatedBy,
         joiningDate: req.body.joiningDate,
-        status: req.body.status
+        status: req.body.status,
+        isVerified: true
       });
       user.setPassword(user, (error, isSet)=>{
         user.save(function (err) {
@@ -264,13 +267,13 @@ module.exports = {
           
           
           // Save the verification token
-          token.save(function (err) {
-            if (err) {
-              const LOGMESSAGE = DATETIME + "|" + err.message;
-              log.write("ERROR", LOGMESSAGE);
-              return res.status(500).send({ success: false, msg: err.message }
-              );
-            }
+          // token.save(function (err) {
+          //   if (err) {
+          //     const LOGMESSAGE = DATETIME + "|" + err.message;
+          //     log.write("ERROR", LOGMESSAGE);
+          //     return res.status(500).send({ success: false, msg: err.message }
+          //     );
+          //   }
   
             // Send the email
             // let emailResponse = transport.sendEmail('fazilamehtabelahi@gmail.com', 'Account Verification Token', 'Hello,\n\n' + 'Please verify your account by clicking the link: \nhttp:\/\/' + req.headers.host + '\/confirmation\/' + token.token + '.\n')
@@ -305,9 +308,11 @@ module.exports = {
             let mailOptions = {
               from: config.email.senderName + ' ' + config.email.senderEmail, // sender address
               to: user.email, // list of receivers
-              subject: 'Account Verification', // Subject line
+              subject: 'Account Created', // Subject line
+              // subject: 'Account Verification', // Subject line
               // text: 'Hello world?', // plain text body
-              html: 'Hello,\n\n' + 'Please <a href="'+config.verificationUrl+ token.token +'">click here</a> to verify your account '   // html body
+              // html: 'Hello,\n\n' + 'Please <a href="'+config.verificationUrl+ token.token +'">click here</a> to verify your account '   // html body
+              html: 'Your account has been create as per following details: <br/><br/>UserID: ' + user.email +'<br/><br/>Password: '+ pwd
             };
             transporter.sendMail(mailOptions, (error, info) => {
               if (error) {
@@ -315,11 +320,12 @@ module.exports = {
                 log.write("ERROR", LOGMESSAGE);
                 return res.status(500).send({ success: false, msg: error.message });
               }
-              const LOGMESSAGE = DATETIME + "| " + 'A verification email has been sent to ' + user.email + '.';
+              // const LOGMESSAGE = DATETIME + "| " + 'A verification email has been sent to ' + user.email + '.';
+              const LOGMESSAGE = DATETIME + "| " + 'Email has been sent to ' + user.email + '.';
               log.write("INFO", LOGMESSAGE);
-              res.status(200).send({ success: true, message: 'A verification email has been sent to ' + user.email + '.' });
+              res.status(200).send({ success: true, message: 'Email has been sent to ' + user.email + '.' });
             });
-          });
+       //   });
         });
       });
      
