@@ -97,7 +97,7 @@ module.exports = {
         }
 
       });
-    }).populate('role', 'name','code');
+    }).populate('role', 'name, code');
   },
 
   //signup User
