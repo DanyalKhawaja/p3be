@@ -255,13 +255,14 @@ module.exports = {
 
       query = [{ $match: { project: ObjectId(id), plannedStartDate: { $lt: new Date() }, workPackage: true } }, { $group: { _id: { completed: { $eq: ["$completed", 100] } }, count: { $sum: 1 } } }];
       data = await taskModel.aggregate(query);
-      let plannedCompletion = data[0].count / (data[0].count + data[1].count);
+      let totalCount =(data[0].count + (data[1] ? data[1].count : 0));
+      let plannedCompletion = data[0].count / totalCount;
 
       let plannedValue = budgetAtCompletion * plannedCompletion;
 
       query = [{ $match: { project: ObjectId(id), completion: 100 } }, { $group: { _id: null, count: { $sum: 1 } } }];
       let mdata = await monitoringModel.aggregate(query);
-      let actualCompletion = (mdata.length > 0 ? mdata[0].count / (data[0].count + data[1].count) : 0);
+      let actualCompletion = (mdata.length > 0 ? mdata[0].count / totalCount : 0);
       let earnedValue = actualCompletion * budgetAtCompletion;
       let costVariance = earnedValue - actualCost;
       let scheduleVariance = earnedValue - plannedValue;
@@ -408,7 +409,8 @@ module.exports = {
       //   return obj;
       // }, plannedConsumableMaterialBreakup);
 
-      (await taskUtilizedResourceModel.aggregate(query)).forEach(row => {
+      let utilizedResources = await taskUtilizedResourceModel.aggregate(query);
+      utilizedResources.forEach(row => {
         consumableMaterialBreakup[row._id.task][row._id.rankId].Actual = { qty: row.qty, total: row.total };
       });
 

@@ -9,7 +9,7 @@ var projectSchema = new schema(
       type: mongoose.Schema.ObjectId,
       ref: 'ProjectType'
     },
-    program: { type: mongoose.Schema.ObjectId, ref: 'Program', required: true },
+    program: { type: mongoose.Schema.ObjectId, ref: 'Program'},
     expectedStartDate: { type: Date },
     expectedEndDate: { type: Date },
     milestones: [milestone],
@@ -22,6 +22,10 @@ var projectSchema = new schema(
     manager: {
       type: mongoose.Schema.ObjectId,
       ref: 'User'
+    },
+    wbsStatus: { 
+      type: String,
+      enum: ['OPEN', 'LOCKED']
     },
     createdBy: {
       type: mongoose.Schema.ObjectId,

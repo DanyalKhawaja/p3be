@@ -11,7 +11,6 @@ module.exports = {
     create: [
         check('description', 'Description field is required').not().isEmpty(),
         check('name', 'Name field is required').not().isEmpty(),
-        check('program', 'Program Date field is required').not().isEmpty(),
         check('projectType', 'Project Type field is required').not().isEmpty(),
         //check('projectLocation', 'Project Location field is required').not().isEmpty(),
         check('totalEstimatedBudget', 'Total Estimated Budget field is required').not().isEmpty(),
