@@ -12,11 +12,10 @@ module.exports = {
         check('description', 'Description field is required').not().isEmpty(),
         check('name', 'Name field is required').not().isEmpty(),
         check('projectType', 'Project Type field is required').not().isEmpty(),
-        //check('projectLocation', 'Project Location field is required').not().isEmpty(),
+        check('projectLocation', 'Project Location field is required').not().isEmpty(),
         check('totalEstimatedBudget', 'Total Estimated Budget field is required').not().isEmpty(),
         check('expectedStartDate', 'Expected Start Date field is required').not().isEmpty(),
         check('expectedEndDate', 'Expected End Date field is required').not().isEmpty(),
-        check('notes', 'Notes field is required').not().isEmpty(),
         check('createdBy', 'Created By field is required').not().isEmpty(),
 
         function (req, res, next) {

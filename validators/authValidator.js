@@ -66,9 +66,9 @@ module.exports = {
         check('lastName', 'lastName field is required').not().isEmpty(),
         check('phoneNo', 'Phone No field is required').not().isEmpty(),
         check('companyId', 'Company field is required').not().isEmpty(),
-        check('department', 'Department field is required').not().isEmpty(),
+        // check('department', 'Department field is required').not().isEmpty(),
         check('role', 'Role field is required').not().isEmpty(),
-        check('lineManager', 'Line Manager Name field is required').not().isEmpty(),
+        // check('lineManager', 'Line Manager Name field is required').not().isEmpty(),
         // check('joiningDate', 'Joining Date field is required').not().isEmpty(),
         check('status', 'Status field is required').not().isEmpty(),
 

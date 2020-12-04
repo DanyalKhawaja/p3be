@@ -31,7 +31,15 @@ const taskPlannedResourceBaseSchema = new mongoose.Schema({
   total: {
     type: Number,
     required: true
-  }
+  },
+  costIncurred:{
+    type: Number,
+    default: 0
+  },
+  quantityConsumed:{
+    type: Number,
+    default: 0
+  },
 }, {
   discriminatorKey: "__type",
   collection: "taskPlannedResources"

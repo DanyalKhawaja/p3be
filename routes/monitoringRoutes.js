@@ -12,6 +12,9 @@ router.get("/", monitoringController.list);
 router.get("/completedTask/:id", monitoringController.showCompletedTask);
 
 router.get("/taskWithMonitoring/:id", monitoringController.showTaskWithMonitoring);
+
+router.get("/monitoringsWithLocation/:id", monitoringController.showPopulatedByProjectId);
+
 /*
  * GET User By ID
  */

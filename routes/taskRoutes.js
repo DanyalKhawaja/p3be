@@ -27,7 +27,7 @@ router.delete("/:taskId/:projectId", taskController.remove);
 router.post("/wbs", taskController.wbs);
 router.put("/wbs", taskController.updateWorkPackages);
 
-router.put("/wbs_single", taskController.updateWorkPackage);
+router.put("/wbs_single", taskController.updateMonitoredWorkPackage);
 
 /*
  * GET Task By ID
@@ -41,7 +41,7 @@ router.get("/byProject/:id", taskController.showTaskByProjectId);
 router.get("/executionsPendingbyProject/:id", taskController.showExecutionsPendingByProjectId);
 router.get("/wptasksByProject/:id", taskController.showWPTasksByProjectId);
 router.get("/executedTasksbyProject/:id", taskController.showExecutedTasksByProjectId);
-
+router.put("/cron/:id", taskController.markMonitorings);
 
 /*
  * GET First Name By ID

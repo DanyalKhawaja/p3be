@@ -1,6 +1,7 @@
 const dateFormat = require("dateformat");
 
 const taskUtilizedResourceBaseModel = require("../models/taskUtilizedResourceBaseModel");
+const taskPlannedResourceModel = require("../models/taskPlannedResourceBaseModel");
 const taskUtilizedResourceModel = require("../models/taskUtilizedResourceModel");
 const taskUtilizedBOQModel = require("../models/taskUtilizedBOQModel");
 const monitoringModel = require("../models/monitoringModel");
@@ -122,9 +123,8 @@ module.exports = {
     let errors = [], data = [];
     try {
       if (req.body.tasks.length > 0) {
-        // var monitoring = new monitoringModel(req.body.tasks);
-        let result = await monitoringModel.insertMany(req.body.tasks, function (err, tasks) {
-          // monitoring.save(function (err, monitoring) {
+        
+       let result = await monitoringModel.insertMany(req.body.tasks, function (err, tasks) {
           if (err) {
             const LOGMESSAGE = DATETIME + "|" + err.message;
             log.write("ERROR", LOGMESSAGE);
@@ -143,6 +143,8 @@ module.exports = {
 
       }
 
+ 
+
       if (req.body.resources.length > 0) {
         let result = await taskUtilizedResourceModel.insertMany(req.body.resources, function (err, taskUtilizedResource) {
           if (err) {
@@ -152,6 +154,12 @@ module.exports = {
           }
           const LOGMESSAGE = DATETIME + "|taskUtilizedResource created";
           log.write("INFO", LOGMESSAGE);
+
+          req.body.resources.forEach(resource => {
+            taskPlannedResourceModel.updateOne({_id: resource.taskPlannedResource},{ $inc: { costIncurred:  (resource.actualCostPerUnit * resource.quantity), quantityConsumed: resource.quantity}},function (err, DATA) {
+             
+            });
+          })
         });
 
         data.push({ success: true, msg: "taskUtilizedResource is created", data: result });
@@ -167,8 +175,11 @@ module.exports = {
           }
           const LOGMESSAGE = DATETIME + "|taskUtilizedBOQ created";
           log.write("INFO", LOGMESSAGE);
-          // return res.status(201).json(taskPlannedResource);
-
+          req.body.BOQ.forEach(bq => {
+            taskPlannedResourceModel.updateOne({_id: bq.taskPlannedResource},{ $inc: { costIncurred:  (bq.actualCostPerUnit * bq.quantity), quantityConsumed: bq.quantity}},function (err, DATA) {
+              
+            });
+          })
         });
 
         data.push({ success: true, msg: "taskUtilizedBOQ is created", data: result });

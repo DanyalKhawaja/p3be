@@ -26,7 +26,7 @@ module.exports = {
         return res.json({ success: true, data: users });
       })
         .populate('department', 'name')
-        .populate('role', 'name, code')
+        .populate('role', ['name', 'code'])
         .populate('lineManager', 'username')
         .populate('companyId', 'name','company');
     } catch (error) {

@@ -347,7 +347,7 @@ module.exports = {
     }
   
   },
-   updatefromProgram: function (req, res) {
+  updatefromProgram: function (req, res) {
     try {
       const DATETIME = dateFormat(new Date(), "yyyy-mm-dd HH:MM:ss");
       var id = req.params.id;
@@ -478,7 +478,7 @@ module.exports = {
             msg: "No such project"
           });
         }
-  
+        project.status= req.body.status? req.body.status: project.status;
         project.name= req.body.name? req.body.name: project.name;
         project.description= req.body.description? req.body.description: project.description;
         project.program= req.body.program? req.body.program: project.program;
@@ -490,12 +490,12 @@ module.exports = {
         project.expectedEndDate= req.body.expectedEndDate? req.body.expectedEndDate: project.expectedEndDate;
         project.notes= req.body.notes? req.body.notes: project.notes;
         project.manager =  req.body.manager ? req.body.manager : project.manager;
-        project.milestones =  req.body.milestones.map(milestone => (new componentMilestoneModel({
-          name: milestone.name,
-          startDate: milestone.startDate,
-          endDate: milestone.endDate,
-          createdBy: milestone.createdBy
-        })));
+        // project.milestones =  req.body.milestones.map(milestone => (new componentMilestoneModel({
+        //   name: milestone.name,
+        //   startDate: milestone.startDate,
+        //   endDate: milestone.endDate,
+        //   createdBy: milestone.createdBy
+        // })));
         project.updatedBy= req.body.updatedBy?req.body.updatedBy: project.updatedBy;
         project.updatedDate = DATETIME;
     

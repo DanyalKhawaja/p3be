@@ -24,7 +24,7 @@ router.post("/", projectValidator.create, projectController.create);
  * PUT
  */
 router.put("/component/:id",  projectController.updateComponent);
-router.put("/:id", projectValidator.update, projectController.update);
+router.put("/:id",  projectController.update);
 router.put("/fromProgram/:id",  projectController.updatefromProgram);
 /*
  * DELETE

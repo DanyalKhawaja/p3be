@@ -74,6 +74,44 @@ module.exports = {
     }
 
   },
+  showPopulatedByProjectId: function (req, res) {
+    try {
+      const DATETIME = dateFormat(new Date(), "yyyy-mm-dd HH:MM:ss");
+      var id = req.params.id;
+      monitoringModel.find({ project: id }).populate('task',['projectLocation' ,'actualStartDate', 'actualEndDate','completed']).exec(function (err, monitoring) {
+        if (err) {
+          const LOGMESSAGE = DATETIME + "|" + err.message;
+          log.write("ERROR", LOGMESSAGE);
+          return res.status(500).json({
+            success: false,
+            msg: "Error when getting monitoring.",
+            error: err
+          });
+        }
+        if (!monitoring) {
+          const LOGMESSAGE = DATETIME + "|No such monitoring:" + id;
+          log.write("ERROR", LOGMESSAGE);
+          return res.status(404).json({
+            success: false,
+            msg: "No such monitoring:" + id
+          });
+        }
+        const LOGMESSAGE = DATETIME + "|monitoring Found";
+        log.write("INFO", LOGMESSAGE);
+        return res.json({ success: true, data: monitoring });
+        // return res.json(monitoring);
+      });
+    } catch (error) {
+      const LOGMESSAGE = DATETIME + "|" + error.message;
+      log.write("ERROR", LOGMESSAGE);
+      return res.status(500).json({
+        success: false,
+        msg: "Error when getting monitoring.",
+        error: error
+      });
+    }
+
+  },
   showMonitoringByTaskId: function (req, res) {
     try {
       const DATETIME = dateFormat(new Date(), "yyyy-mm-dd HH:MM:ss");

@@ -1,0 +1,83 @@
+const monthEndDate = date => {
+    const nextMonthDate = new Date(date.getFullYear(), date.getMonth() + 1);
+    const dayInMilliseconds = (1000 * 25 * 60);
+    return new Date(nextMonthDate - dayInMilliseconds);
+}
+
+const getFirstDate = date => {
+    return new Date(date.getFullYear(), date.getMonth());
+}
+
+const getMonthID = date => {
+    return (['01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12'][date.getMonth()] + date.getFullYear());
+}
+
+const businessDays = (startDate, endDate) => {
+    var count = 0;
+    var curDate = startDate;
+    while (curDate <= endDate) {
+        var dayOfWeek = curDate.getDay();
+        if (!((dayOfWeek == 6) || (dayOfWeek == 0)))
+            count++;
+        curDate.setDate(curDate.getDate() + 1);
+    }
+    return count;
+}
+const alpha = () => 0.5;
+const beta = () => 0.3;
+const At = (D, t, A, T) => {
+    if (A.length > t) return A[t];
+    else {
+        A[t] = (alpha() * D[t]) + ((1 - alpha()) * (A[t - 1] + T[t - 1]));
+        return A[t];
+    }
+};
+
+const Tt = (D,t, A, T) => {
+    if (T.length > t) return T[t];
+    else {
+        T[t] = ((beta() * (At(D, t, A, T) - A[t - 1])) + ((1 - beta()) * T[t-1]));
+        return T[t];
+    }
+
+};
+
+getFt = (t, D, A, T) => At(D, t - 1, A, T) + Tt(D,t - 1, A, T);
+const cycleDays = (frequency, startDate) => ({
+    1: 1,
+    2: 5,
+    3: 15,
+    4: businessDays(new Date(startDate), monthEndDate(new Date()))
+}[frequency]);
+
+const nextCycle = (frequency, startDate, endDate) => {
+    let _cycleDays = cycleDays(frequency, new Date(startDate));
+    let offDays = 0, count = 0, today = new Date();
+    let correctDate;
+    var curDate = startDate;
+    var curWeekDay = startDate.getDay();
+
+    while (curDate < today) {
+        var dayOfWeek = curDate.getDay();
+        if (!((dayOfWeek == 6) || (dayOfWeek == 0))) count++;
+        else offDays++;
+        curDate.setDate(curDate.getDate() + 1);
+    }
+    let daysLapse = count % _cycleDays;
+    let lastDays = daysLapse;
+    let dueDates = [];
+    while (true) {
+        var dayOfWeek = curDate.getDay();
+        if (daysLapse < _cycleDays) {
+            if (!((dayOfWeek == 6) || (dayOfWeek == 0))) daysLapse++;
+        } else {
+            let nextDate = _cycleDays == 1 ? new Date() : new Date(curDate.setDate(curDate.getDate() - 1));
+            dueDates.push({ date: nextDate, days: daysLapse });
+            daysLapse = 0;
+        }
+        if (dueDates.length == 1) return dueDates;
+        curDate.setDate(curDate.getDate() + 1);
+    }
+}
+
+module.exports = { nextCycle, getFirstDate, getFt,businessDays };

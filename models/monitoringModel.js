@@ -1,21 +1,35 @@
-var mongoose = require("mongoose");
-var schema = mongoose.Schema;
+var { Schema, model, Schema: { ObjectId } } = require("mongoose");
 
-var monitoringSchema = new schema(
+var monitoringSchema = new Schema(
   {
-    project: { 
-        type: mongoose.Schema.ObjectId, ref: 'Project', required: true
+    project: {
+      type: ObjectId, ref: 'Project', required: true
     },
-    task: { 
-      type: mongoose.Schema.ObjectId, ref: 'Task',  required: true
-      
+    task: {
+      type: ObjectId, ref: 'Task', required: true
+
     },
-    monitoringDate: { type: Date,  default: Date.now },
-    actualCost: { type: Number, required: true },
-    completion: { type: Number, required:true },
-    createdDate: { type: Date, default: Date.now },
-    createdBy: { type: mongoose.Schema.ObjectId, ref: 'User',  required: true }
+    taskId: {
+      type: String, required: true
+
+    },
+    monitoringDate: {
+      type: Date, default: Date.now
+    },
+    actualCost: {
+      type: Number, required: true
+    },
+    completion: {
+      type: Number, required: true
+    },
+    
+    createdDate: {
+      type: Date, default: Date.now
+    },
+    createdBy: {
+      type: ObjectId, ref: 'User', required: true
+    }
   }
 );
-  
-module.exports = mongoose.model("Monitoring", monitoringSchema);
+
+module.exports = model("Monitoring", monitoringSchema);

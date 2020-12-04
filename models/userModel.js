@@ -48,8 +48,7 @@ const userSchema = new schema({
    },
    department: {
       type: mongoose.Schema.ObjectId,
-      ref: "Department",
-      required: true
+      ref: "Department"
    },
    role: {
       type: mongoose.Schema.ObjectId,
@@ -58,8 +57,7 @@ const userSchema = new schema({
    },
    lineManager: {
       type: mongoose.Schema.ObjectId,
-      ref: "User",
-      required: true
+      ref: "User"
    }, //required true
    employmentType: {
       type: String,
