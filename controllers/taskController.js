@@ -1042,8 +1042,8 @@ let performanceData = {
 
         if (element.monitoringStatus) task.monitoringStatus = element.monitoringStatus;
         if (element.actualStartDate) task.actualStartDate = element.actualStartDate;
-        if (element.quantityConsumed) task.quantityConsumed = (task.quantityConsumed ?? 0) + element.quantityConsumed;
-        if (element.costIncurred) task.costIncurred = (task.costIncurred ?? 0) + element.costIncurred;
+        if (element.quantityConsumed) task.quantityConsumed = (task.quantityConsumed ? task.quantityConsumed: 0) + element.quantityConsumed;
+        if (element.costIncurred) task.costIncurred = (task.costIncurred ?task.costIncurred: 0) + element.costIncurred;
         if (element.lastMonitoredOn) task.lastMonitoredOn = DATETIME;
         if (element.completed) task.completed = element.completed;
         if (element.updatedBy) task.updatedBy = element.updatedBy
