@@ -4,6 +4,7 @@ const projectLocationController = require("../controllers/projectLocationControl
 
 router.get("/", projectLocationController.list);
 router.get("/:projectId",  projectLocationController.show);
+router.get("/locations/:projectId",  projectLocationController.getLocations);
 router.post("/", projectLocationController.create);
 router.put("/:id", projectLocationController.update);
 router.delete("/:id", projectLocationController.remove);

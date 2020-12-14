@@ -36,7 +36,44 @@ module.exports = {
     try {
       const DATETIME = dateFormat(new Date(), "yyyy-mm-dd HH:MM:ss");
       var id = req.params.projectId;
-      projectLocationModel.find({ project: id }).exec(function (err, projectLocation) {
+      projectLocationModel.find({ project: id}).exec(function (err, projectLocation) {
+        if (err) {
+          const LOGMESSAGE = DATETIME + "|" + err.message;
+          log.write("ERROR", LOGMESSAGE);
+          return res.status(500).json({
+            success:false,
+            msg: "Error when getting project location.",
+            error: err
+          });
+        }
+        if (!projectLocation) {
+          const LOGMESSAGE = DATETIME + "|No such project location:"+id;
+          log.write("ERROR", LOGMESSAGE);
+          return res.status(404).json({
+            success:false,
+            msg: "No such project:"+id
+          });
+        }
+        const LOGMESSAGE = DATETIME + "|project Found";
+        log.write("INFO", LOGMESSAGE);
+        return res.json({success:true,data:projectLocation});
+        // return res.json(project);
+      });      
+    } catch (error) {
+      const LOGMESSAGE = DATETIME + "|" + error.message;
+      log.write("ERROR", LOGMESSAGE);
+      return res.status(500).json({
+        success:false,
+        msg: "Error when getting project.",
+        error: error
+      });
+    }
+  },
+  getLocations: function (req, res) {
+    try {
+      const DATETIME = dateFormat(new Date(), "yyyy-mm-dd HH:MM:ss");
+      var id = req.params.projectId;
+      projectLocationModel.find({ project: id , pathType: {$in:['End','single']}}).exec(function (err, projectLocation) {
         if (err) {
           const LOGMESSAGE = DATETIME + "|" + err.message;
           log.write("ERROR", LOGMESSAGE);

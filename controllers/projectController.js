@@ -416,8 +416,10 @@ module.exports = {
             expectedStartDate: req.body.expectedStartDate,
             expectedEndDate: req.body.expectedEndDate,
             notes: req.body.notes,
+            graphLabels: req.body.graphLabels,
             manager: req.body.manager,
             createdBy: req.body.createdBy
+
       });
       // console.log(req.body);
  
@@ -490,6 +492,7 @@ module.exports = {
         project.expectedEndDate= req.body.expectedEndDate? req.body.expectedEndDate: project.expectedEndDate;
         project.notes= req.body.notes? req.body.notes: project.notes;
         project.manager =  req.body.manager ? req.body.manager : project.manager;
+        project.graphLabel =  req.body.graphLabels ?  req.body.graphLabels : project.graphLabel;
         // project.milestones =  req.body.milestones.map(milestone => (new componentMilestoneModel({
         //   name: milestone.name,
         //   startDate: milestone.startDate,

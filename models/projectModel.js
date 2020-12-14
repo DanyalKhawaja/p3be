@@ -27,6 +27,10 @@ var projectSchema = new schema({
     enum: ['OPEN','PLANNED', 'REVIEW', 'REJECTED','APPROVED','STOPPED','UNDERGOING' ],
     default: 'OPEN'
   },
+  graphLabels: {
+    type: Array,
+    default: []
+  },
   createdBy: {
     type: mongoose.Schema.ObjectId,
     ref: 'User'

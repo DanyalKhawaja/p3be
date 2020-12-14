@@ -223,8 +223,8 @@ module.exports = {
         ];
       let totalsBreakup = await monitoringModel.aggregate(query);
       let rootTask = await taskModel.findOne({ project: ObjectId(id), taskId: '0' }).lean();
-      let firstExecutedTask =  await taskModel.findOne({ project: ObjectId(id), actualStartDate: {$ne: null},workPackage: true }).sort({actualStartDate:1}).lean();
-      let allWPTasks = await taskModel.find({ project: ObjectId(id), workPackage: true }).sort({plannedStartDate:1}).lean();
+      let firstExecutedTask = await taskModel.findOne({ project: ObjectId(id), actualStartDate: { $ne: null }, workPackage: true }).sort({ actualStartDate: 1 }).lean();
+      let allWPTasks = await taskModel.find({ project: ObjectId(id), workPackage: true }).sort({ plannedStartDate: 1 }).lean();
       //, plannedEndDate: { $lte: new Date() } 
       let weightageMap = allWPTasks.reduce((map, task) => { map[task.taskId] = task.weightage; return map; }, {});
       let tasks = allWPTasks;
@@ -305,13 +305,13 @@ module.exports = {
       });
 
       let lastPlannedMonth = prev;
-
+      lastMonitoredMonth = prev;
       let budgetAtCompletion = monthlyPlannedBreakup.budgetAtCompletion;
       let plannedValue = monthlyPlannedBreakup.monthly[lastMonitoredMonth].cumulativePlannedValue;
-      let earnedValue = monthlyActualBreakup.monthly[lastMonitoredMonth].cumulativeEarnedValue;
-      let actualCost = monthlyActualBreakup.monthly[lastMonitoredMonth].cumulativeActualCost;
+      let earnedValue = monthlyActualBreakup.monthly[lastMonitoredMonth] ? monthlyActualBreakup.monthly[lastMonitoredMonth].cumulativeEarnedValue : 0;
+      let actualCost = monthlyActualBreakup.monthly[lastMonitoredMonth] ? monthlyActualBreakup.monthly[lastMonitoredMonth].cumulativeActualCost : 0;
 
-      let actualCostNonCumulative = monthlyActualBreakup.monthly[lastMonitoredMonth].actualCost;
+      let actualCostNonCumulative = monthlyActualBreakup.monthly[lastMonitoredMonth] ? monthlyActualBreakup.monthly[lastMonitoredMonth].actualCost : 0;
 
       let costVariance = earnedValue - actualCost;
       let scheduleVariance = earnedValue - plannedValue;
@@ -329,32 +329,32 @@ module.exports = {
       let varianceAtCompletion = budgetAtCompletion - estimateAtCompletion;
       v = (estimateAtCompletion - actualCost);
       let TCPI = v != 0 ? ((budgetAtCompletion - earnedValue) / (estimateAtCompletion - actualCost)) : 0;
-      let averageMonthlyCost = budgetAtCompletion/Object.keys(monthlyPlannedBreakup.monthly).length;
-      let actualDaysSinceExecution= businessDays(firstExecutedTask.actualStartDate,new Date());
-      let totalPlannedDays = businessDays(rootTask.plannedStartDate,rootTask.plannedEndDate);
-let performanceData = {
-      PerformanceCostData : {
-        ActualCost: actualCostNonCumulative, // actual cost for the current month
-        AverageMonthlyCost: averageMonthlyCost, // total cost divided by the total budget
-        PurpleRange: [0, averageMonthlyCost],
-        YellowRange: [averageMonthlyCost, averageMonthlyCost * 1.25],
-        RedRange: [averageMonthlyCost * 1.25,averageMonthlyCost * 1.5]
-      },
-      PerformanceBudgetData : {
-        TotalEstimatedBudget: budgetAtCompletion, //sum of all PlannedCost for Level-1 tasks
-        TotalActualCost: actualCost,
-        PurpleRange: [0, budgetAtCompletion],
-        YellowRange: [budgetAtCompletion, budgetAtCompletion + 0],// plus management reserve
-        RedRange: [ budgetAtCompletion + 0,  (budgetAtCompletion + 0) * 1.25]
-      },
-      PerformanceScheduleData : {
-        TotalPlannedDays: totalPlannedDays, // duration of the least and maximum dates from all the tasks in ProjectTasks
-        TotalDaysSpent: actualDaysSinceExecution, // duration of the least and maximum date from all the monitoring
-        PurpleRange: [ 0, totalPlannedDays ],
-        YellowRange: [ totalPlannedDays, totalPlannedDays * 1.25 ],
-        RedRange: [totalPlannedDays * 1.25, totalPlannedDays * 1.75 ]
-      }
-    };
+      let averageMonthlyCost = budgetAtCompletion / Object.keys(monthlyPlannedBreakup.monthly).length;
+      let actualDaysSinceExecution = businessDays(firstExecutedTask ? firstExecutedTask.actualStartDate : new Date(), new Date());
+      let totalPlannedDays = businessDays(rootTask.plannedStartDate, rootTask.plannedEndDate);
+      let performanceData = {
+        PerformanceCostData: {
+          ActualCost: actualCostNonCumulative, // actual cost for the current month
+          AverageMonthlyCost: averageMonthlyCost, // total cost divided by the total budget
+          PurpleRange: [0, averageMonthlyCost],
+          YellowRange: [averageMonthlyCost, averageMonthlyCost * 1.25],
+          RedRange: [averageMonthlyCost * 1.25, averageMonthlyCost * 1.5]
+        },
+        PerformanceBudgetData: {
+          TotalEstimatedBudget: budgetAtCompletion, //sum of all PlannedCost for Level-1 tasks
+          TotalActualCost: actualCost,
+          PurpleRange: [0, budgetAtCompletion],
+          YellowRange: [budgetAtCompletion, budgetAtCompletion + 0],// plus management reserve
+          RedRange: [budgetAtCompletion + 0, (budgetAtCompletion + 0) * 1.25]
+        },
+        PerformanceScheduleData: {
+          TotalPlannedDays: totalPlannedDays, // duration of the least and maximum dates from all the tasks in ProjectTasks
+          TotalDaysSpent: actualDaysSinceExecution, // duration of the least and maximum date from all the monitoring
+          PurpleRange: [0, totalPlannedDays],
+          YellowRange: [totalPlannedDays, totalPlannedDays * 1.25],
+          RedRange: [totalPlannedDays * 1.25, totalPlannedDays * 1.75]
+        }
+      };
 
 
       query = [
@@ -497,7 +497,6 @@ let performanceData = {
         costVariance,
         costStatus,
         performanceData,
-
         CPI,
         SPI,
         varianceAtCompletion,
@@ -1042,8 +1041,8 @@ let performanceData = {
 
         if (element.monitoringStatus) task.monitoringStatus = element.monitoringStatus;
         if (element.actualStartDate) task.actualStartDate = element.actualStartDate;
-        if (element.quantityConsumed) task.quantityConsumed = (task.quantityConsumed ? task.quantityConsumed: 0) + element.quantityConsumed;
-        if (element.costIncurred) task.costIncurred = (task.costIncurred ?task.costIncurred: 0) + element.costIncurred;
+        if (element.quantityConsumed) task.quantityConsumed = (task.quantityConsumed ? task.quantityConsumed : 0) + element.quantityConsumed;
+        if (element.costIncurred) task.costIncurred = (task.costIncurred ? task.costIncurred : 0) + element.costIncurred;
         if (element.lastMonitoredOn) task.lastMonitoredOn = DATETIME;
         if (element.completed) task.completed = element.completed;
         if (element.updatedBy) task.updatedBy = element.updatedBy
