@@ -224,7 +224,7 @@ module.exports = {
       let totalsBreakup = await monitoringModel.aggregate(query);
       let rootTask = await taskModel.findOne({ project: ObjectId(id), taskId: '0' }).lean();
       let firstExecutedTask = await taskModel.findOne({ project: ObjectId(id), actualStartDate: { $ne: null }, workPackage: true }).sort({ actualStartDate: 1 }).lean();
-      let allWPTasks = await taskModel.find({ project: ObjectId(id), workPackage: true }).sort({ plannedStartDate: 1 }).lean();
+      let allWPTasks = await taskModel.find({ project: ObjectId(id), workPackage: true }).populate('projectLocation', 'pathId').sort({ plannedStartDate: 1 }).lean();
       //, plannedEndDate: { $lte: new Date() } 
       let weightageMap = allWPTasks.reduce((map, task) => { map[task.taskId] = task.weightage; return map; }, {});
       let tasks = allWPTasks;
