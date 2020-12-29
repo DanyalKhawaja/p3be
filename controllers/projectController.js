@@ -415,6 +415,7 @@ module.exports = {
             totalEstimatedBudget: req.body.totalEstimatedBudget,
             expectedStartDate: req.body.expectedStartDate,
             expectedEndDate: req.body.expectedEndDate,
+            currency: req.body.currency,
             notes: req.body.notes,
             graphLabels: req.body.graphLabels,
             manager: req.body.manager,

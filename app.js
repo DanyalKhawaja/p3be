@@ -14,6 +14,7 @@ const userRoutes = require("./routes/userRoutes");
 const departmentRoutes = require("./routes/departmentRoutes");
 const authRoutes = require('./routes/authRoutes');
 const roleRoutes = require('./routes/roleRoutes');
+const currencyRoutes = require('./routes/currencyRoutes');
 const projectTypeRoutes = require('./routes/projectTypeRoutes')
 const resourceTypeRoutes = require('./routes/resourceTypeRoutes')
 const resourceRoutes = require('./routes/resourceRoutes')
@@ -87,6 +88,7 @@ app.use("/department", passport.authenticate('jwt', { session: false }), departm
 app.use("/company", passport.authenticate('jwt', { session: false }), companyRoutes);
 app.use("/subscription", passport.authenticate('jwt', { session: false }), subscriptionRoutes);
 app.use('/role', passport.authenticate('jwt', { session: false }), roleRoutes);
+app.use('/currency', passport.authenticate('jwt', { session: false }), currencyRoutes);
 app.use("/projecttype", passport.authenticate('jwt', { session: false }), projectTypeRoutes);
 app.use("/resourcetype", passport.authenticate('jwt', { session: false }), resourceTypeRoutes);
 app.use("/resource", passport.authenticate('jwt', { session: false }), resourceRoutes)
@@ -127,3 +129,4 @@ app.use("/pptOptions", passport.authenticate('jwt', { session: false }), pptOpti
 
 
 module.exports = app;
+

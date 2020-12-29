@@ -1,3 +1,5 @@
+const dateFormat = require("dateformat");
+
 const monthEndDate = date => {
     const nextMonthDate = new Date(date.getFullYear(), date.getMonth() + 1);
     const dayInMilliseconds = (1000 * 25 * 60);
@@ -33,16 +35,16 @@ const At = (D, t, A, T) => {
     }
 };
 
-const Tt = (D,t, A, T) => {
+const Tt = (D, t, A, T) => {
     if (T.length > t) return T[t];
     else {
-        T[t] = ((beta() * (At(D, t, A, T) - A[t - 1])) + ((1 - beta()) * T[t-1]));
+        T[t] = ((beta() * (At(D, t, A, T) - A[t - 1])) + ((1 - beta()) * T[t - 1]));
         return T[t];
     }
 
 };
 
-getFt = (t, D, A, T) => At(D, t - 1, A, T) + Tt(D,t - 1, A, T);
+getFt = (t, D, A, T) => At(D, t - 1, A, T) + Tt(D, t - 1, A, T);
 const cycleDays = (frequency, startDate) => ({
     1: 1,
     2: 5,
@@ -80,4 +82,26 @@ const nextCycle = (frequency, startDate, endDate) => {
     }
 }
 
-module.exports = { nextCycle, getFirstDate, getFt,businessDays };
+function respondWithError(res, err, msg) {
+    const DATETIME = dateFormat(new Date(), "yyyy-mm-dd HH:MM:ss");
+    const LOGMESSAGE = DATETIME + "|" + err.message;
+    log.write("ERROR", LOGMESSAGE);
+    return res.status(500).json({
+        success: false,
+        msg: msg,
+        error: err,
+    });
+}
+
+
+function respondWithNotFound(res, msg) {
+    const DATETIME = dateFormat(new Date(), "yyyy-mm-dd HH:MM:ss");
+    const LOGMESSAGE = DATETIME + "|" + err.message;
+    log.write("ERROR", LOGMESSAGE);
+    return res.status(404).json({
+        success: false,
+        msg: msg
+    });
+}
+
+module.exports = { respondWithError, nextCycle, getFirstDate, getFt, businessDays };
