@@ -7,12 +7,12 @@ const lessonLearnedController = require("../controllers/lessonLearnedController"
 /*
  * GET
  */
-router.get("/", lessonLearnedController.list);
+router.get("/:id", lessonLearnedController.byId);
 
 /*
  * GET lessonLearned By by Porject ID
  */
-router.get("/:id",  lessonLearnedController.show);
+router.get("/byProject/:projectId",  lessonLearnedController.byProject);
 
 /*
  * POST

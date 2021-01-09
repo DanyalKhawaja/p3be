@@ -1,6 +1,6 @@
 const dateFormat = require("dateformat");
 var mongoose = require("mongoose");
-const _get = require('lodash.get');
+const _get = require('lodash').get;
 const { respondWithError, nextCycle, getFirstDate, getFt, businessDays } = require('./common');
 
 const ObjectId = mongoose.Types.ObjectId;
@@ -29,7 +29,7 @@ module.exports = {
   show: function (req, res) {
     try {
       const DATETIME = dateFormat(new Date(), "yyyy-mm-dd HH:MM:ss");
-      var id = req.params.id;
+      var id = req.params.id.toString();
       var projectId = req.params.projectId;
       taskModel
         .find({ taskId: id, project: projectId })
@@ -143,6 +143,16 @@ module.exports = {
       let monitoringsCost = await monitoringModel.aggregate(query);
       let rootTask = await taskModel.findOne({ project: ObjectId(id), taskId: '0' }).lean();
       let firstExecutedTask = await taskModel.findOne({ project: ObjectId(id), actualStartDate: { $ne: null }, workPackage: true }).sort({ actualStartDate: 1 }).lean();
+      let drows = await taskModel.find({project:ObjectId("5fd73e989ce78d6f0837c8eb"),workPackage: true, completed: {$ne:100}});
+      let completionDate =null;
+      if(drows.length == 0){
+        drows = await taskModel.find({project:ObjectId("5fd73e989ce78d6f0837c8eb"),workPackage: true}).sort({plannedEndDate: -1}).limit(1);
+        completionDate = drows[0].actualEndDate;
+      }
+
+      
+  
+
       let allWPTasks = await taskModel.find({ project: ObjectId(id), workPackage: true }).populate('projectLocation', 'pathId').sort({ plannedStartDate: 1 }).lean();
       //, plannedEndDate: { $lte: new Date() } 
       let weightageMap = allWPTasks.reduce((map, task) => { map[task.taskId] = task.weightage; return map; }, {});
@@ -191,6 +201,7 @@ module.exports = {
       // map[monthID].cumulativeActualCompletion = map.totalActualCompletion;
       let prev = null;
       let firstD = null;
+ 
       Object.keys(monActBrk.monthly).sort((a, b) => (new Date(a)) - (new Date(b))).forEach(key => {
         if (!firstD) firstD = key;
         // monActBrk.monthly[key].cumActCost = (prev ? monActBrk.monthly[prev].cumActCost : 0) + monActBrk.monthly[key].actualCost;
@@ -249,13 +260,13 @@ module.exports = {
       if (costVariance < 0) costStatus = "Over budget";
       let CPI = earnedValue / actualCost;
       let SPI = earnedValue / plannedValue;
-      // let estimateAtCompletion = actualCost + ((budAtComp - earnedValue) / (SPI * CPI));
-      let estimateAtCompletion = budAtComp  /CPI;
+      let estimateAtCompletion = actualCost + ((budAtComp - earnedValue) / (SPI * CPI));
+      // let estimateAtCompletion = budAtComp  /CPI;
       let varianceAtCompletion = budAtComp - estimateAtCompletion;
       v = (estimateAtCompletion - actualCost);
-      let TCPI = (budAtComp - earnedValue) / (estimateAtCompletion - actualCost) ;
+      let TCPI = (budAtComp != earnedValue) ? (budAtComp - earnedValue) / (estimateAtCompletion - actualCost) :0;
       let averageMonthlyCost = budAtComp / Object.keys(monPlnBrk.monthly).length;
-      let actualDaysSinceExecution = businessDays(firstExecutedTask ? firstExecutedTask.actualStartDate : new Date(), new Date());
+      let actualDaysSinceExecution = businessDays(firstExecutedTask ? firstExecutedTask.actualStartDate : new Date(), completionDate || new Date());
       let totalPlannedDays = businessDays(rootTask.plannedStartDate, rootTask.plannedEndDate);
       let performanceData = {
         PerformanceCostData: {
@@ -427,6 +438,7 @@ module.exports = {
         varianceAtCompletion,
         budAtComp,
         tasks,
+        completionDate,
         monitoringsCost,
         actualLaborBreakup,
         plannedLaborBreakup,
@@ -742,7 +754,7 @@ module.exports = {
     try {
       var monitoredWorkPackages = req.body;
       monitoredWorkPackages.forEach(async d => {
-        await taskModel.updateOne({ _id: d._id }, { actualCost: d.actualCost, lastMonitoredOn: DATETIME, ...(d.completed && { monitoringStatus: d.monitoringStatus, completed: d.completed }) });
+        await taskModel.updateOne({ _id: d._id }, { actualCost: d.actualCost, lastMonitoredOn: DATETIME, ...(d.completed && { actualEndDate: d.completed == 100 ? DATETIME : null,monitoringStatus: d.monitoringStatus, completed: d.completed }) });
       });
       const LOGMESSAGE = DATETIME + "|Updated tasks:";
       log.write("INFO", LOGMESSAGE);

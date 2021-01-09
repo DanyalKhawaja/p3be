@@ -21,7 +21,7 @@ module.exports = {
         const LOGMESSAGE = DATETIME + "|Resource Type List found";
         log.write("INFO", LOGMESSAGE);
         return res.json({ success: true, data: resourceType });
-      }).populate("parentId", "name").sort('name');
+      }).sort({level:1}).populate("parentId", "name").sort('name');
     } catch (error) {
       const LOGMESSAGE = DATETIME + "|" + error.message;
       log.write("ERROR", LOGMESSAGE);
@@ -308,7 +308,7 @@ function removeChild (childId, parentId) {
 
       //resourceType.updatedBy= updatedBy,
       resourceType.updatedDate = DATETIME;        
-
+ 
       resourceType.save(function (err, resourceType) {
         if (err) {
           const LOGMESSAGE = DATETIME + "|" + err.message;

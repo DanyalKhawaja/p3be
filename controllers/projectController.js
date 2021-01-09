@@ -67,7 +67,7 @@ module.exports = {
     try {
       const DATETIME = dateFormat(new Date(), "yyyy-mm-dd HH:MM:ss");
       var id = req.params.id;
-      projectModel.findOne({ _id: id }).populate('program','name').exec(function (err, project) {
+      projectModel.findOne({ _id: id }).populate('program','name').populate('projectType').exec(function (err, project) {
         if (err) {
           const LOGMESSAGE = DATETIME + "|" + err.message;
           log.write("ERROR", LOGMESSAGE);

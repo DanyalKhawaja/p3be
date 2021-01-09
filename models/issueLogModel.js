@@ -18,7 +18,7 @@ var issueLogSchema = new schema({
          required: true
       },
       logDate: {
-         type: String,
+         type: Date,
          required: true
       },
       requestedBy: {

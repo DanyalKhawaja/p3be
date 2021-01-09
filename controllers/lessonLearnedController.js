@@ -5,12 +5,19 @@ const lessonLearnedModel = require("../models/lessonLearnedModel");
 const log = require('../lib/logger');
 
 module.exports = {
-  list: function (req, res) {
+  byId: function (req, res) {
     try {
       const DATETIME = dateFormat(new Date(), "yyyy-mm-dd HH:MM:ss");
-      lessonLearnedModel.find(function (err, lessonLearned) {
+      let { id } = req.params;
+      lessonLearnedModel.findById(id, function (err, lessonLearned) {
         if (err) {
-
+          const LOGMESSAGE = DATETIME + "|" + err.message;
+          log.write("ERROR", LOGMESSAGE);
+          return res.status(500).json({
+            success: false,
+            msg: "Error when getting lessonLearned.",
+            error: err
+          });
         }
         const LOGMESSAGE = DATETIME + "|lessonLearned List found";
         log.write("INFO", LOGMESSAGE);
@@ -28,12 +35,11 @@ module.exports = {
 
   },
 
-  show: function (req, res) {
+  byProject: function (req, res) {
     try {
       const DATETIME = dateFormat(new Date(), "yyyy-mm-dd HH:MM:ss");
-      var id = req.params.id;
-
-      lessonLearnedModel.find({ project: id }).populate('lessonLearnedType', 'description').populate('project', 'name').exec(function (err, lessonLearned) {
+      let { projectId } = req.params;
+      lessonLearnedModel.find({ project: projectId }).populate('lessonLearnedType', 'description').populate('project', 'name').exec(function (err, lessonLearned) {
         if (err) {
           const LOGMESSAGE = DATETIME + "|" + err.message;
           log.write("ERROR", LOGMESSAGE);
@@ -44,11 +50,11 @@ module.exports = {
           });
         }
         if (!lessonLearned) {
-          const LOGMESSAGE = DATETIME + "|No such lessonLearned:" + id;
+          const LOGMESSAGE = DATETIME + "|No such lessonLearned:" + projectId;
           log.write("ERROR", LOGMESSAGE);
           return res.status(404).json({
             success: false,
-            msg: "No such lessonLearned:" + id
+            msg: "No such lessonLearned:" + projectId
           });
         }
         const LOGMESSAGE = DATETIME + "|lessonLearned Found";
