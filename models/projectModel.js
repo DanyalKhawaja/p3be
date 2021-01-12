@@ -8,15 +8,20 @@ var projectSchema = new schema({
     type: mongoose.Schema.ObjectId,
     ref: 'ProjectType'
   },
-  program: { type: mongoose.Schema.ObjectId, ref: 'Program' },
+  program: {
+    type: mongoose.Schema.ObjectId, 
+    default: null,
+    ref: 'Program',
+  },
   expectedStartDate: { type: Date },
   expectedEndDate: { type: Date },
   milestones: [milestone],
   projectLocation: {
     type: Object
   },
+
   currency: {
-    type: String, ref: 'Currency' 
+    type: String, ref: 'Currency'
   },
   totalEstimatedBudget: { type: String },
   managementReserve: { type: Number, default: 0 },
@@ -27,7 +32,7 @@ var projectSchema = new schema({
   },
   status: {
     type: String,
-    enum: ['OPEN','PLANNED', 'REVIEW', 'REJECTED','APPROVED','STOPPED','UNDERGOING' ],
+    enum: ['OPEN', 'PLANNED', 'REVIEW', 'REJECTED', 'APPROVED', 'STOPPED', 'UNDERGOING'],
     default: 'OPEN'
   },
   graphLabels: {

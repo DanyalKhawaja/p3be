@@ -5,7 +5,8 @@ var programSchema = new schema(
   {
     portfolio: {
       type: mongoose.Schema.ObjectId,
-      ref: 'Portfolio'
+      ref: 'Portfolio',
+      default: null
     },
     name: { type: String, unique: true, required: true },
     startDate: { type: Date, required: true },
