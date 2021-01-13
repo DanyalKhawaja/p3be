@@ -22,7 +22,6 @@ module.exports = {
         log.write("INFO", LOGMESSAGE);
         return res.json({success:true,data:program});
       })
-      .populate('portfolio','name')
       .populate('manager','username')
       .populate('sponsor','username');
     } catch (error) {

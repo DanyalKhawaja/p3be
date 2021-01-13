@@ -22,7 +22,7 @@ module.exports = {
         const LOGMESSAGE = DATETIME + "|project List found";
         log.write("INFO", LOGMESSAGE);
         return res.json({success:true,data:project});
-      }).populate('program','name');
+      });
     } catch (error) {
       const LOGMESSAGE = DATETIME + "|" + error.message;
       log.write("ERROR", LOGMESSAGE);

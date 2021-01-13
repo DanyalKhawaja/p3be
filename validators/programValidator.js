@@ -9,7 +9,7 @@ const checkBodyAndQuery = buildCheckFunction(['body', 'query']);
 module.exports = {
 
     create: [
-        check('portfolio', 'Portfolio field is required').not().isEmpty(),
+        // check('portfolio', 'Portfolio field is required').not().isEmpty(),
         check('name', 'Name field is required').not().isEmpty(),
         check('startDate', 'Start Date field is required').not().isEmpty(),
         check('endDate', 'End Date field is required').not().isEmpty(),
