@@ -55,6 +55,7 @@ const pptCriteriaRoutes = require('./routes/pptCriteriaRoutes')
 const pptOptionsRoutes = require('./routes/pptOptionsRoutes');
 const companyRoutes = require('./routes/companyRoutes')
 const subscriptionRoutes = require('./routes/subscriptionRoutes');
+const componentRoutes = require('./routes/componentRoutes');
 mongoose
   .connect(databaseConfig.uri, {
     useNewUrlParser: true,
@@ -126,7 +127,7 @@ app.use("/benefitsnature", passport.authenticate('jwt', { session: false }), ben
 app.use("/ppt", passport.authenticate('jwt', { session: false }), pptRoutes)
 app.use("/pptCriteria", passport.authenticate('jwt', { session: false }), pptCriteriaRoutes)
 app.use("/pptOptions", passport.authenticate('jwt', { session: false }), pptOptionsRoutes)
-
+app.use("/component",passport.authenticate('jwt', { session: false }),componentRoutes)
 
 module.exports = app;
 

@@ -24,8 +24,8 @@ var programSchema = new schema(
       type: mongoose.Schema.ObjectId,
       ref: 'User'
     },
-    locked: {type: Boolean, default: false},
-    lockedOn: {type: Date},
+    // locked: {type: Boolean, default: false},
+    // lockedOn: {type: Date},
     createdBy: {
       type: mongoose.Schema.ObjectId,
       ref: 'User'

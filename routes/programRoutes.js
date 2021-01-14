@@ -9,8 +9,8 @@ const programValidator = require("../validators/programValidator");
  * GET
  */
 router.get("/", programController.list);
-router.get("/locked", programController.lockedList);
-router.get("/open", programController.openList);
+// router.get("/locked", programController.lockedList);
+// router.get("/open", programController.openList);
 /*
  * GET Program By Program ID
  */
@@ -25,7 +25,7 @@ router.post("/", programValidator.create, programController.create);
  * PUT
  */
 router.put("/:id", programValidator.programId, programController.update);
-router.put("/lock/:id", programValidator.programId, programController.lock);
+// router.put("/lock/:id", programValidator.programId, programController.lock);
 
 /*
  * DELETE

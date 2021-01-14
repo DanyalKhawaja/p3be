@@ -1,6 +1,5 @@
 var mongoose = require("mongoose");
 var schema = mongoose.Schema;
-var milestone = require("./componentMilestoneModel").schema;
 var projectSchema = new schema({
   name: { type: String, required: true },
   description: { type: String },
@@ -8,14 +7,13 @@ var projectSchema = new schema({
     type: mongoose.Schema.ObjectId,
     ref: 'ProjectType'
   },
-  program: {
+  component: {
     type: mongoose.Schema.ObjectId, 
     default: null,
-    ref: 'Program',
+    ref: 'Component',
   },
   expectedStartDate: { type: Date },
   expectedEndDate: { type: Date },
-  milestones: [milestone],
   projectLocation: {
     type: Object
   },
