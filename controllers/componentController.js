@@ -207,6 +207,7 @@ module.exports = {
 
         projects.forEach((d, i) => {
           projects[i].component = components[0]._id;
+          projects[i].program = components[0].program;
           projects[i].createdBy = components[0].createdBy;
         })
         projectModel.insertMany(projects, function (err, projects) {

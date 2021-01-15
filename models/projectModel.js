@@ -12,6 +12,11 @@ var projectSchema = new schema({
     default: null,
     ref: 'Component',
   },
+  program: {
+    type: mongoose.Schema.ObjectId, 
+    default: null,
+    ref: 'Program',
+  },
   expectedStartDate: { type: Date },
   expectedEndDate: { type: Date },
   projectLocation: {
