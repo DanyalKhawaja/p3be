@@ -139,6 +139,44 @@ module.exports = {
     }
 
   },
+  showByProgramId: function (req, res) {
+    try {
+      const DATETIME = dateFormat(new Date(), "yyyy-mm-dd HH:MM:ss");
+      var id = req.params.id;
+      projectModel.find({ program: id }, function (err, project) {
+        if (err) {
+          const LOGMESSAGE = DATETIME + "|" + err.message;
+          log.write("ERROR", LOGMESSAGE);
+          return res.status(500).json({
+            success: false,
+            msg: "Error when getting project.",
+            error: err
+          });
+        }
+        if (!project) {
+          const LOGMESSAGE = DATETIME + "|NO Such project of program:" + id;
+          log.write("ERROR", LOGMESSAGE);
+          return res.status(404).json({
+            success: false,
+            msg: "No such project"
+          });
+        }
+        const LOGMESSAGE = DATETIME + "|project found of program:" + id;
+        log.write("INFO", LOGMESSAGE);
+        return res.json({ success: true, data: project });
+        // return res.json(project);
+      }).populate('manager', 'username');
+    } catch (error) {
+      const LOGMESSAGE = DATETIME + "|" + error.message;
+      log.write("ERROR", LOGMESSAGE);
+      return res.status(500).json({
+        success: false,
+        msg: "Error when getting project.",
+        error: error
+      });
+    }
+
+  },
   showByPortfolioId: function (req, res) {
     try {
       const DATETIME = dateFormat(new Date(), "yyyy-mm-dd HH:MM:ss");

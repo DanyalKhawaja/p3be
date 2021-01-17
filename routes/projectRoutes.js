@@ -35,6 +35,7 @@ router.delete("/:id", projectValidator.projectId,projectController.remove);
  * GET project By program ID
  */
 router.get("/byComponent/:id", projectController.showByComponentId);
+router.get("/byProgram/:id", projectController.showByProgramId);
 /*
  * GET project By portfolio ID
  */

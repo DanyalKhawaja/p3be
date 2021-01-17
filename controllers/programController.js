@@ -196,6 +196,7 @@ module.exports = {
             portfolio: req.body.portfolio,
             name: req.body.name,
             startDate: req.body.startDate,
+            currency: req.body.currency,
             endDate: req.body.endDate,
             periodFrom: req.body.periodFrom,
             periodTo: req.body.periodTo,
