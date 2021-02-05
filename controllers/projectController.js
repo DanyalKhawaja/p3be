@@ -9,7 +9,7 @@ module.exports = {
   list: function (req, res) {
     try {
       const DATETIME = dateFormat(new Date(), "yyyy-mm-dd HH:MM:ss");
-      projectModel.find({ program: null }, function (err, project) {
+      projectModel.find({  }, function (err, project) {
         if (err) {
           const LOGMESSAGE = DATETIME + "|" + err.message;
           log.write("ERROR", LOGMESSAGE);

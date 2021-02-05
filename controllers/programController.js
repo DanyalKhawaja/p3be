@@ -8,7 +8,7 @@ module.exports = {
   list: function (req, res) {
     try {
       const DATETIME = dateFormat(new Date(), "yyyy-mm-dd HH:MM:ss");
-      programModel.find({portfolio: null},function (err, program) {
+      programModel.find({},function (err, program) {
         if (err) {
           const LOGMESSAGE = DATETIME + "|" + err.message;
           log.write("ERROR", LOGMESSAGE);
