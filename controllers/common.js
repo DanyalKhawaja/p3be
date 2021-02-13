@@ -1,30 +1,22 @@
 const dateFormat = require("dateformat");
-//const dayjs = require("dayjs");
+const { add, format, eachMonthOfInterval } = require('date-fns');
 
-// const dayJS = require('dayjs');
-
-// const createMonthlyArray = (firstDate) => {
-//     let from = dayjs(firstDate);
-//     let to = dayjs().add(1, 'month');
-//     let array = [];
-//     do {
-//         array.push({
-//             _id: from.format('YYYY-MM'),
-//             plannedCost: 0,
-//             plannedCompletion: 0,
-//             actualCompletion: 0,
-//             actualCost: 0,
-//             cumulativePlannedCost: 0,
-//             cumulativePlannedCompletion: 0,
-//             cumulativeActualCompletion: 0,
-//             cumulativeActualCost: 0,
-//             cumulativePlannedValue: 0,
-//             cumulativeEarnedValue: 0
-//         });
-//         from = from.add(1, 'month');
-//     } while (!from.isAfter(to, 'month'));
-//     return array;
-// };
+const createMonthlyArray = (start) => {
+    let monthsList = eachMonthOfInterval({ start, end: add(new Date(), { months: 1 })});
+    return monthsList.map(month => ({
+        _id: format(month, 'yyyy-MM'),
+        plannedCost: 0,
+        plannedCompletion: 0,
+        actualCompletion: 0,
+        actualCost: 0,
+        cumulativePlannedCost: 0,
+        cumulativePlannedCompletion: 0,
+        cumulativeActualCompletion: 0,
+        cumulativeActualCost: 0,
+        cumulativePlannedValue: 0,
+        cumulativeEarnedValue: 0
+    }));
+};
 
 
 const getFirstDate = date => {
@@ -127,4 +119,4 @@ function respondWithNotFound(res, msg) {
     });
 }
 
-module.exports = {  respondWithError, nextCycle, getFirstDate, getFt, businessDays };
+module.exports = { createMonthlyArray, respondWithError, nextCycle, getFirstDate, getFt, businessDays };
