@@ -18,9 +18,9 @@ router.get("/:id",  riskRegisterController.show);
  * GET riskRegister By project ID
  */
 router.get("/byProject/:id",  riskRegisterController.showByProject);
-
+router.get("/byProgram/:id",  riskRegisterController.showByProgram);
 router.get("/byRiskImpact/:projectId/:costImpact/:timeImpact",  riskRegisterController.showByRiskImpact);
-
+router.get("/byProgramRiskImpact/:programId/:costImpact/:timeImpact",  riskRegisterController.showByProgramRiskImpact);
 /*
  * POSTm
  */

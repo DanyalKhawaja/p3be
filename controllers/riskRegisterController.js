@@ -1,7 +1,7 @@
 const dateFormat = require("dateformat");
 
 const riskRegisterModel = require("../models/riskRegisterModel");
-
+const projectModel = require("../models/projectModel");
 const log = require('../lib/logger');
 
 module.exports = {
@@ -39,6 +39,84 @@ module.exports = {
       var id = req.params.id;
 
       riskRegisterModel.find({ project: id }).populate('owner','username').populate('status','description').populate('project','name').exec(function (err, riskRegister) {
+        if (err) {
+          const LOGMESSAGE = DATETIME + "|" + err.message;
+          log.write("ERROR", LOGMESSAGE);
+          return res.status(500).json({
+            success: false,
+            msg: "Error when getting riskRegister.",
+            error: err
+          });
+        }
+        if (!riskRegister) {
+          const LOGMESSAGE = DATETIME + "|No such riskRegister:" + id;
+          log.write("ERROR", LOGMESSAGE);
+          return res.status(404).json({
+            success: false,
+            msg: "No such riskRegister:" + id
+          });
+        }
+        const LOGMESSAGE = DATETIME + "|riskRegister Found";
+        log.write("INFO", LOGMESSAGE);
+        return res.json({ success: true, data: riskRegister });
+        // return res.json(riskRegister);
+      });
+    } catch (error) {
+      const LOGMESSAGE = DATETIME + "|" + error.message;
+      log.write("ERROR", LOGMESSAGE);
+      return res.status(500).json({
+        success: false,
+        msg: "Error when getting riskRegister.",
+        error: error
+      });
+    }
+
+  },
+  showByProgram: async function  (req, res) {
+    try {
+      const DATETIME = dateFormat(new Date(), "yyyy-mm-dd HH:MM:ss");
+      var program = req.params.id;
+      var projects = (await projectModel.find({ program }, { _id: 1 }).lean()).map((d) => d._id);
+      riskRegisterModel.find({ project: {$in: projects}}).populate('owner','username').populate('status','description').populate('project','name').exec(function (err, riskRegister) {
+        if (err) {
+          const LOGMESSAGE = DATETIME + "|" + err.message;
+          log.write("ERROR", LOGMESSAGE);
+          return res.status(500).json({
+            success: false,
+            msg: "Error when getting riskRegister.",
+            error: err
+          });
+        }
+        if (!riskRegister) {
+          const LOGMESSAGE = DATETIME + "|No such riskRegister:" + id;
+          log.write("ERROR", LOGMESSAGE);
+          return res.status(404).json({
+            success: false,
+            msg: "No such riskRegister:" + id
+          });
+        }
+        const LOGMESSAGE = DATETIME + "|riskRegister Found";
+        log.write("INFO", LOGMESSAGE);
+        return res.json({ success: true, data: riskRegister });
+        // return res.json(riskRegister);
+      });
+    } catch (error) {
+      const LOGMESSAGE = DATETIME + "|" + error.message;
+      log.write("ERROR", LOGMESSAGE);
+      return res.status(500).json({
+        success: false,
+        msg: "Error when getting riskRegister.",
+        error: error
+      });
+    }
+
+  },
+  showByProgramRiskImpact: async function (req, res) {
+    try {
+      const DATETIME = dateFormat(new Date(), "yyyy-mm-dd HH:MM:ss");
+      var {programId, costImpact, timeImpact} = req.params;
+      var projects = (await projectModel.find({ program:programId  }, { _id: 1 }).lean()).map((d) => d._id);
+      riskRegisterModel.find({$and:[{ project: {$in: projects}}, {timeImpact: timeImpact},{costImpact: costImpact }]}).populate('owner','username').populate('status','description').populate('project','name').exec(function (err, riskRegister) {
         if (err) {
           const LOGMESSAGE = DATETIME + "|" + err.message;
           log.write("ERROR", LOGMESSAGE);

@@ -39,10 +39,10 @@ router.get("/byTaskIdAndProjectId/:id/:projectId", taskController.show);
  */
 router.get("/byProject/:id", taskController.showTaskByProjectId);
 router.get("/executionsPendingbyProject/:id", taskController.showExecutionsPendingByProjectId);
-router.get("/wptasksByProject/:id", taskController.showWPTasksByProjectId);
+router.get("/wptasksByProject/:id", taskController.dashboardByProjectId);
 router.get("/executedTasksbyProject/:id", taskController.showExecutedTasksByProjectId);
 router.put("/cron/:id", taskController.markMonitorings);
-
+router.get("/dashboardByProgram/:id", taskController.dashboardByProgramId);
 /*
  * GET First Name By ID
  */

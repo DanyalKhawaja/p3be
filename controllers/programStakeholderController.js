@@ -79,7 +79,6 @@ module.exports = {
     try {
       const DATETIME = dateFormat(new Date(), "yyyy-mm-dd HH:MM:ss");
       var programStakeholder = new programStakeholderModel({
-  
       program:req.body.program,
       role:req.body.role,
       name:req.body.name,
@@ -88,11 +87,10 @@ module.exports = {
       levelSupportRequired:req.body.levelSupportRequired,
       levelSupportProvided:req.body.levelSupportProvided,
       impact:req.body.impact,
-      riskRating:req.body.riskRating,
+      riskRating:  Number(req.body.impact) * Number(req.body.levelSupportRequired),
       issues:req.body.issues,
       feedback:req.body.feedback,
       influenceStrategy:req.body.influenceStrategy,
-      createdDate:req.body.createdDate,
       createdBy:req.body.createdBy    
       });
    
