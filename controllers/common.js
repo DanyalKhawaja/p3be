@@ -127,4 +127,4 @@ function respondWithNotFound(res, msg) {
     });
 }
 
-module.exports = { createMonthlyArray, respondWithError, nextCycle, getFirstDate, getFt, businessDays };
+module.exports = {  respondWithError, nextCycle, getFirstDate, getFt, businessDays };
