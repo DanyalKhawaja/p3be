@@ -4,7 +4,7 @@ var mongoose = require('mongoose');
 
 const _ = require('lodash');
 
-const { createMonthlyArray, respondWithError, nextCycle, getFirstDate, getFt, businessDays } = require('./common');
+const {  respondWithError, nextCycle, getFirstDate, getFt, businessDays } = require('./common');
 
 const ObjectId = mongoose.Types.ObjectId;
 const projectModel = require('../models/projectModel');
@@ -415,7 +415,8 @@ module.exports = {
         $sort: { "_id": 1 }
       }]);
 
-      let monthList = createMonthlyArray(monthwisePlanned[0].firstDate)
+      let monthList =[];
+      // createMonthlyArray(monthwisePlanned[0].firstDate)
       let monthwiseData = _.values(_.merge(_.keyBy(monthList, '_id'), _.keyBy(monthwisePlanned, '_id'), _.keyBy(monthwiseActual, '_id')));
       monthwiseData[monthwiseActual.length - 1].isLastMonitoring = true;
       monthwiseData.forEach((doc, i, docs) => {

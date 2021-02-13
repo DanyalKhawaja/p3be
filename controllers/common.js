@@ -1,31 +1,31 @@
 const dateFormat = require("dateformat");
 const dayjs = require("dayjs");
 
-const dayJS = require('dayjs');
+// const dayJS = require('dayjs');
 
-const createMonthlyArray = (firstDate) => {
-    let from = dayjs(firstDate);
-    let to = dayjs().add(1, 'month');
-    let array = [];
-    do {
-        array.push({
-            _id: from.format('YYYY-MM'),
-            plannedCost: 0,
-            plannedCompletion: 0,
-            actualCompletion: 0,
-            actualCost: 0,
-            cumulativePlannedCost: 0,
-            cumulativePlannedCompletion: 0,
-            cumulativeActualCompletion: 0,
-            cumulativeActualCost: 0,
-            cumulativePlannedValue: 0,
-            cumulativeEarnedValue: 0
-        });
-        from = from.add(1, 'month');
-    } while (!from.isAfter(to, 'month'));
-    return array;
-};
-{ }
+// const createMonthlyArray = (firstDate) => {
+//     let from = dayjs(firstDate);
+//     let to = dayjs().add(1, 'month');
+//     let array = [];
+//     do {
+//         array.push({
+//             _id: from.format('YYYY-MM'),
+//             plannedCost: 0,
+//             plannedCompletion: 0,
+//             actualCompletion: 0,
+//             actualCost: 0,
+//             cumulativePlannedCost: 0,
+//             cumulativePlannedCompletion: 0,
+//             cumulativeActualCompletion: 0,
+//             cumulativeActualCost: 0,
+//             cumulativePlannedValue: 0,
+//             cumulativeEarnedValue: 0
+//         });
+//         from = from.add(1, 'month');
+//     } while (!from.isAfter(to, 'month'));
+//     return array;
+// };
+
 
 const getFirstDate = date => {
     return new Date(date.getFullYear(), date.getMonth());
