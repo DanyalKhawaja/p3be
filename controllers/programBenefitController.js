@@ -1,7 +1,7 @@
 const dateFormat = require("dateformat");
 
 const programBenefitModel = require("../models/programBenefitModel");
-
+const projectModel = require("../models/projectModel");
 const log = require('../lib/logger');
 
 module.exports = {
@@ -21,7 +21,8 @@ module.exports = {
         const LOGMESSAGE = DATETIME + "|programBenefit List found";
         log.write("INFO", LOGMESSAGE);
         return res.json({success:true,data:programBenefit});
-      }).populate('program', 'name').populate('projectManager', 'username').populate('nature', 'description').populate('assessmentResponsibility', 'username');
+      }).populate('project', 'name').populate('nature', 'description').populate('assessmentResponsibility', 'username');
+      //.populate('program', 'name').populate('projectManager', 'username').populate('nature', 'description').populate('assessmentResponsibility', 'username');
     } catch (error) {
       const LOGMESSAGE = DATETIME + "|" + error.message;
       log.write("ERROR", LOGMESSAGE);
@@ -34,12 +35,12 @@ module.exports = {
 
   },
 
-  show: function (req, res) {
+  show: async function (req, res) {
     try {
       const DATETIME = dateFormat(new Date(), "yyyy-mm-dd HH:MM:ss");
       var id = req.params.id;
-     
-      programBenefitModel.find({ program: id}).populate('program', 'name').populate('projectManager', 'username').populate('nature', 'description').populate('assessmentResponsibility', 'username').exec(function (err, programBenefit) {
+      programBenefitModel.find({ program: id}).populate('nature', 'description').populate('assessmentResponsibility', 'username').exec(function (err, programBenefit) {
+      //.populate('program', 'name').populate('projectManager', 'username').populate('nature', 'description').populate('assessmentResponsibility', 'username').exec(function (err, programBenefit) {
         if (err) {
           const LOGMESSAGE = DATETIME + "|" + err.message;
           log.write("ERROR", LOGMESSAGE);
@@ -78,9 +79,7 @@ module.exports = {
     try {
       const DATETIME = dateFormat(new Date(), "yyyy-mm-dd HH:MM:ss");
       var programBenefit = new programBenefitModel({
-          
       program:req.body.program,
-      projectManager:req.body.projectManager,
       description:req.body.description,
       nature:req.body.nature,
       value:req.body.value,
@@ -144,7 +143,6 @@ module.exports = {
         }
        
         programBenefit.program= req.body['program']?req.body['program'] : programBenefit.program,
-        programBenefit.projectManager= req.body['projectManager']?req.body['projectManager'] : programBenefit.projectManager,
         programBenefit.description= req.body['description']?req.body['description'] : programBenefit.description,
         programBenefit.nature= req.body['nature']?req.body['nature'] : programBenefit.nature,
         programBenefit.value= req.body['value']?req.body['value'] : programBenefit.value,

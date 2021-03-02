@@ -1,8 +1,8 @@
 const dateFormat = require("dateformat");
-
 const componentModel = require("../models/componentModel");
 
 const log = require('../lib/logger');
+const programModel = require("../models/programModel");
 const projectModel = require("../models/projectModel");
 
 module.exports = {
@@ -65,6 +65,60 @@ module.exports = {
           return res.json({ success: true, data: component });
           // return res.json(component);
         });
+    } catch (error) {
+      const LOGMESSAGE = DATETIME + "|" + error.message;
+      log.write("ERROR", LOGMESSAGE);
+      return res.status(500).json({
+        success: false,
+        msg: "Error when getting component.",
+        error: error
+      });
+    }
+
+  },
+  showByPortfolioId: function (req, res) {
+    try {
+      const DATETIME = dateFormat(new Date(), "yyyy-mm-dd HH:MM:ss");
+      var portfolio = req.params.id;
+
+      programModel.find({ portfolio }, function (err, programs) {
+        if (err) {
+          const LOGMESSAGE = DATETIME + "|" + err.message;
+          log.write("ERROR", LOGMESSAGE);
+          return res.status(500).json({
+            success: false,
+            msg: "Error when getting component.",
+            error: err
+          });
+        }
+
+        programs = programs.map((d) => d._id);
+        componentModel.find({ program: { $in: programs } }, function (err, component) {
+          if (err) {
+            const LOGMESSAGE = DATETIME + "|" + err.message;
+            log.write("ERROR", LOGMESSAGE);
+            return res.status(500).json({
+              success: false,
+              msg: "Error when getting component.",
+              error: err
+            });
+          }
+          if (!component) {
+            const LOGMESSAGE = DATETIME + "|NO Such component of portfolio:" + portfolio;
+            log.write("ERROR", LOGMESSAGE);
+            return res.status(404).json({
+              success: false,
+              msg: "No such component"
+            });
+          }
+          const LOGMESSAGE = DATETIME + "|component found of portfolio:" + portfolio;
+          log.write("INFO", LOGMESSAGE);
+          return res.json({ success: true, data: component });
+          // return res.json(component);
+        });
+      }).lean();
+
+
     } catch (error) {
       const LOGMESSAGE = DATETIME + "|" + error.message;
       log.write("ERROR", LOGMESSAGE);

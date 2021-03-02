@@ -36,6 +36,6 @@ router.delete("/:id", componentValidator.componentId,componentController.remove)
  * GET component By profile ID
  */
 router.get("/byProgram/:id", componentValidator.programId, componentController.showByProgramId);
-
+router.get("/byPortfolio/:id",  componentController.showByPortfolioId);
 
 module.exports = router;

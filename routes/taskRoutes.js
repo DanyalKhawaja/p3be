@@ -43,6 +43,9 @@ router.get("/wptasksByProject/:id", taskController.dashboardByProjectId);
 router.get("/executedTasksbyProject/:id", taskController.showExecutedTasksByProjectId);
 router.put("/cron/:id", taskController.markMonitorings);
 router.get("/dashboardByProgram/:id", taskController.dashboardByProgramId);
+router.get("/dashboardByPortfolio/:id", taskController.dashboardByPortfolioId);
+router.get("/programGovernance/:id", taskController.programGovernance);
+router.get("/portfolioGovernance", taskController.portfolioGovernance);
 /*
  * GET First Name By ID
  */

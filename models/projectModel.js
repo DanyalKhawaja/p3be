@@ -22,7 +22,12 @@ var projectSchema = new schema({
     projectLocation: {
         type: Object,
     },
-
+    completed: {
+        type: Number
+    },
+    lastMonitoringDate: {
+        type: Date
+    },
     currency: {
         type: String,
         ref: "Currency",

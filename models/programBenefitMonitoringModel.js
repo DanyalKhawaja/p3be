@@ -5,8 +5,8 @@ var programBenefitMonitoringSchema = new schema(
   {
     benefit: { type: mongoose.Schema.ObjectId, ref: 'ProgramBenefit', required:true},
     benefitFrom : {type: Date,  required: true },
-    benefitDuration: { type: String, required: true },
-    benefitValue: { type: String, required: true },    
+    benefitDuration: { type: Number, required: true },
+    benefitValue: { type: Number, required: true },    
     explanation: { type: String, required: true },
     assessmentBy: { type: mongoose.Schema.ObjectId, ref: 'User',  required: true },    
     createdBy: { type: mongoose.Schema.ObjectId, ref: 'User',  required: true },
