@@ -22,14 +22,12 @@ var pptOvsOSchema = new schema(
         type: mongoose.Schema.ObjectId,
         ref: 'PPTOptions'
       }   ,
-      rowNo: {
-        type: Number,
-        required: true
+     
+    sequence: {
+      type: Number,
+      required: true
     },
-    columnNo: {
-        type: Number,
-        required: true
-    },
+  
     optionWeight: {
         type: Number,
         required: true

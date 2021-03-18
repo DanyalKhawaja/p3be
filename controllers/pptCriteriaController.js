@@ -1,8 +1,47 @@
 const dateFormat = require("dateformat");
 const pptCriteriaModel = require("../models/pptCriteriaModel");
 const log = require('../lib/logger');
+const { Types}= require('mongoose');
 
 module.exports = {
+  get: function (req, res) {
+    try {
+      const DATETIME = dateFormat(new Date(), "yyyy-mm-dd HH:MM:ss");
+      var id = req.params.pptId;         
+      pptCriteriaModel.find()
+      .exec(function (err, pptCriteria) {
+        if (err) {
+          const LOGMESSAGE = DATETIME + "|" + err.message;
+          log.write("ERROR", LOGMESSAGE);
+          return res.status(500).json({
+            success:false,
+            msg: "Error when getting pptCriteria.",
+            error: err
+          });
+        }
+        if (!pptCriteria) {
+          const LOGMESSAGE = DATETIME + "|No such pptCriteria with pptID:"+id;
+          log.write("ERROR", LOGMESSAGE);
+          return res.status(404).json({
+            success:false,
+            msg: "No such pptCriteria with pptID:"+id
+          });
+        }
+        const LOGMESSAGE = DATETIME + "|pptCriteria Found";
+        log.write("INFO", LOGMESSAGE);
+        return res.json({success:true,data:pptCriteria});
+        // return res.json(pptCriteria);
+      });    
+    } catch (error) {
+      const LOGMESSAGE = DATETIME + "|" + error.message;
+      log.write("ERROR", LOGMESSAGE);
+      return res.status(500).json({
+        success:false,
+        msg: "Error when getting pptCriteria.",
+        error: error
+      });
+    }
+  },
     byPptId: function (req, res) {
         try {
           const DATETIME = dateFormat(new Date(), "yyyy-mm-dd HH:MM:ss");
@@ -42,18 +81,20 @@ module.exports = {
         }
       },
   create: function (req, res) {
+    const DATETIME = dateFormat(new Date(), "yyyy-mm-dd HH:MM:ss");
     try {
-      const DATETIME = dateFormat(new Date(), "yyyy-mm-dd HH:MM:ss");
-      var pptCriteria = new pptCriteriaModel({
-      name:req.body.name,
-      pptId:req.body.pptId,
-      createdBy: req.body.createdBy,
-      createdDate: DATETIME,
-      updatedBy: req.body.updatedBy,
-      updatedDate: DATETIME           
-      });
-   
-      pptCriteria.save(function (err, pptCriteria) {
+    
+      // var pptCriteria = new pptCriteriaModel({
+      // name:req.body.name,
+      // pptId:req.body.pptId,
+      // createdBy: req.body.createdBy,
+      // createdDate: DATETIME,
+      // updatedBy: req.body.updatedBy,
+      // updatedDate: DATETIME           
+      // });
+      req.body.forEach((d,i)=>{req.body[i]._id = Types.ObjectId(req.body[i]._id)});
+      pptCriteriaModel.collection.insertMany(req.body,function (err, pptCriteria) {
+      // pptCriteria.save(function (err, pptCriteria) {
           if (err) {
             const LOGMESSAGE = DATETIME + "|" + err.message;
             log.write("ERROR", LOGMESSAGE);

@@ -18,14 +18,11 @@ var pptCvsCSchema = new schema(
         ref: 'PPTCriteria',
         required: true
       },
-      rowNo: {
+      sequence: {
         type: Number,
         required: true
-    },
-    columnNo: {
-        type: Number,
-        required: true
-    },
+      },
+    
     criteriaWeight: {
         type: Number,
         required: true

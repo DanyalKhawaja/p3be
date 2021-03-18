@@ -491,6 +491,172 @@ module.exports = {
       respondWithError(res, error, 'Error when getting task.');
     }
   },
+  projectsByPortfolioId: async function (req, res) {
+    const DATETIME = dateFormat(new Date(), 'yyyy-mm-dd HH:MM:ss');
+    try {
+      var portfolio = ObjectId(req.params.id);
+      var programs = (await programModel.find({ portfolio }, { _id: 1 }).lean()).map(d => d._id);
+      var projects = (await projectModel.find({ program: { $in: programs } }, { _id: 1 }).lean()).map((d) => d._id);
+      let allProjects = await projectModel.find({ program : { $in: programs }}, { _id: 1, name: 1 }).lean();
+
+
+      let plannedResourceBreakup = (await taskPlannedResourceModel.aggregate([
+        {
+          $match: {
+            $and: [
+              { project: { $in: projects } },
+              { $or: [{ boqType: '1' }, { __type: 'TaskPlannedResource' }] }
+            ]
+          }
+        },
+        {
+          $group: {
+            _id: { project: "$project" },
+            total: { $sum: { $multiply: ['$cost', '$quantity'] } }
+          }
+        }
+      ])).reduce((obj, row) => {
+        if (!obj[row._id.project]) obj[row._id.project] = {};
+        obj[row._id.project] = row.total;
+        return obj;
+      }, {});
+
+    
+      let plannedLaborBreakup = (await taskPlannedResourceModel.aggregate([
+        {
+          $match: {
+            $and: [{ project: { $in: projects } }, { boqType: '1' }]
+          }
+        },
+        {
+          $group: {
+            _id: { project: "$project" },
+            total: { $sum: { $multiply: ['$cost', '$quantity'] } }
+          }
+        }
+      ])).reduce((obj, row) => {
+        if (!obj[row._id.project]) obj[row._id.project] = {};
+        obj[row._id.project] = row.total;
+        return obj;
+      }, {});
+
+          let plannedContractorEquipmentBreakup = (await taskPlannedResourceModel.aggregate([
+        {
+          $match: {
+            $and: [{ project: { $in: projects } }, { boqType: '3' }]
+          }
+        },
+        {
+          $group: {
+            _id: { project: "$project" },
+            total: { $sum: { $multiply: ['$cost', '$quantity'] } }
+          }
+        }
+      ])).reduce((obj, row) => {
+        if (!obj[row._id.project]) obj[row._id.project] = {};
+        obj[row._id.project] = row.total;
+        return obj;
+      }, {});
+
+      let consumableMaterialBreakup = (await taskPlannedResourceModel.aggregate([
+        {
+          $match: {
+            $and: [{ project: { $in: projects } }, { boqType: '4' }, { top3: { $ne: 0 } }]
+          }
+        },
+        {
+          $group: {
+            _id: { material: '$description' },
+            total: { $sum: { $multiply: ['$cost', '$quantity'] } }
+          }
+        }
+      ])).reduce((obj, row) => {
+        if (!obj[row._id.material]) obj[row._id.material] = {};
+        obj[row._id.material] = row.total;
+        return obj;
+      }, {});
+
+      let projectCostAndCompletion = (await taskModel.aggregate([
+        { $sort: { plannedStartDate: 1 } },
+        { $match: { project: { $in: projects }, workPackage: true } },
+        {
+          $group: {
+            _id: { project: "$project" },
+            actual: { $sum: '$actualCost' },
+            planned: { $sum: '$plannedCost' },
+            completion: { $sum: { $multiply: ['$weightage', '$completed'] } }
+          }
+        }
+      ])).reduce((obj, row) => {
+        if (!obj[row._id.project]) obj[row._id.project] = {};
+        obj[row._id.project].actual = row.actual;
+        obj[row._id.project].planned = row.planned;
+        obj[row._id.project].completion = row.completion;
+        programTotal += row.planned;
+        return obj;
+      }, {});
+
+
+
+      // for (let key in projectCostAndCompletion) {
+      //   projectCostAndCompletion[key].weightage = projectCostAndCompletion[key].planned / programTotal;
+      // }
+      let allWPTasks = await taskModel.find({
+        project: { $in: projects },
+        workPackage: true
+      })
+        .lean()
+        .sort({ plannedStartDate: 1 });
+      let tasks = allWPTasks;
+
+
+
+      let projectsSchedule = await projectModel.aggregate([{
+        $match: { program: {$in: programs}},
+      }, {
+        $project: {
+          plannedDays: { $divide: [{ $subtract: ["$expectedEndDate", "$expectedStartDate"] }, 864e5] },
+          actualDays: {
+            $divide: [{
+              $subtract: [{
+                $cond: { if: { $eq: ["$completed", 100] }, then: "$lastMonitoringDate", else: new Date() }
+              }, "$expectedStartDate"]
+            }, 864e5]
+          },
+
+        }
+      }, {
+        $group: {
+          _id: "$_id",
+          projectActualDays: { $sum: "$actualDays" },
+          projectPlannedDays: { $sum: "$plannedDays" }
+        }
+      }
+      ]);
+
+      projectsSchedule = projectsSchedule.reduce((obj, row) => {
+        if (!obj[row._id]) obj[row._id] = {};
+        obj[row._id].projectActualDays = row.projectActualDays;
+        obj[row._id].projectPlannedDays = row.projectPlannedDays;
+        return obj;
+      }, {});
+
+      let data = {
+        projectCostAndCompletion,
+        allProjects,
+        consumableMaterialBreakup,
+        plannedResourceBreakup,
+        plannedLaborBreakup,
+        plannedContractorEquipmentBreakup,
+        projectsSchedule,
+        allWPTasks
+      };
+      return res.json({ success: true, data: data });
+    } catch (error) {
+      console.log(error)
+      respondWithError(res, error, 'Error when getting task.');
+    }
+  },
   dashboardByPortfolioId: async function (req, res) {
     const DATETIME = dateFormat(new Date(), 'yyyy-mm-dd HH:MM:ss');
     try {
@@ -760,7 +926,7 @@ module.exports = {
         return obj;
       }, {});
 
-      programsSchedule = projectsSchedule.reduce((obj, row) => {
+      let programsSchedule = projectsSchedule.reduce((obj, row) => {
         let prop = programMap[row._id.toString()];
         if (!obj[prop]) obj[prop] = { programActualDays: 0, programPlannedDays: 0 };
         obj[prop].programActualDays += row.projectActualDays;
@@ -872,6 +1038,358 @@ module.exports = {
         plannedContractorEquipmentBreakup,
         consumableMaterialBreakup,
         allWPTasks
+      };
+      return res.json({ success: true, data: data });
+    } catch (error) {
+      respondWithError(res, error, 'Error when getting task.');
+    }
+  },
+  programsByPortfolioId: async function (req, res) {
+    const DATETIME = dateFormat(new Date(), 'yyyy-mm-dd HH:MM:ss');
+    try {
+      var portfolio = ObjectId(req.params.id);
+      var allPrograms = await programModel.find({ portfolio }, { _id: 1, name: 1 }).lean();
+
+      var programs = allPrograms.map((d) => d._id);
+      var projects = (await projectModel.find({ program: { $in: programs } }, { _id: 1 }).lean()).map((d) => d._id);
+      let allProjects = await projectModel.find({ program: { $in: programs } }, { _id: 1, name: 1, program: 1 }).populate('program', 'name').lean();
+
+      let programMap = allProjects.reduce((ob, project) => {
+        ob[project._id] = project.program._id.toString();
+        return ob;
+      }, {})
+
+
+      let plannedResourceBreakup = (await taskPlannedResourceModel.aggregate([
+        {
+          $match: {
+            $and: [
+              { project: { $in: projects } },
+              { $or: [{ boqType: '1' }, { __type: 'TaskPlannedResource' }] }
+            ]
+          }
+        },
+        {
+          $group: {
+            _id: "$project",
+            total: { $sum: { $multiply: ['$cost', '$quantity'] } }
+          }
+        }
+      ])).reduce((obj, row) => {
+        let prop = programMap[row._id.toString()];
+        if (!obj[prop]) obj[prop] = 0;
+        obj[prop] += row.total;
+        return obj;
+      }, {});
+     
+      let plannedLaborBreakup = (await taskPlannedResourceModel.aggregate([
+        {
+          $match: {
+            $and: [{ project: { $in: projects } }, { boqType: '1' }]
+          }
+        },
+        {
+          $group: {
+            _id: "$project",
+            total: { $sum: { $multiply: ['$cost', '$quantity'] } }
+          }
+        }
+      ])).reduce((obj, row) => {
+        let prop = programMap[row._id.toString()];
+        if (!obj[prop]) obj[prop] = 0;
+        obj[prop] += row.total;
+        return obj;
+      }, {});
+     
+
+      let plannedContractorEquipmentBreakup = (await taskPlannedResourceModel.aggregate([
+        {
+          $match: {
+            $and: [{ project: { $in: projects } }, { boqType: '3' }]
+          }
+        },
+        {
+          $group: {
+            _id: "$project",
+            total: { $sum: { $multiply: ['$cost', '$quantity'] } }
+          }
+        }
+      ])).reduce((obj, row) => {
+        let prop = programMap[row._id.toString()];
+        if (!obj[prop]) obj[prop] = 0;
+        obj[prop] += row.total;
+        return obj;
+      }, {});
+
+      let consumableMaterialBreakup = (await taskPlannedResourceModel.aggregate([
+        {
+          $match: {
+            $and: [{ project: { $in: projects } }, { boqType: '4' }, { top3: { $ne: 0 } }]
+          }
+        },
+        {
+          $group: {
+            _id: { material: '$description' },
+            total: { $sum: { $multiply: ['$cost', '$quantity'] } }
+          }
+        }
+      ])).reduce((obj, row) => {
+        if (!obj[row._id.material]) obj[row._id.material] = {};
+        obj[row._id.material] = row.total;
+        return obj;
+      }, {});
+
+
+      let portfolioTotal = 0;
+      let programCostAndCompletion = (await taskModel.aggregate([
+        { $sort: { plannedStartDate: 1 } },
+        { $match: { project: { $in: projects }, workPackage: true } },
+        {
+          $group: {
+            _id: "$project",
+            actual: { $sum: '$actualCost' },
+            planned: { $sum: '$plannedCost' },
+            completion: { $sum: { $multiply: ['$weightage', '$completed'] } }
+          }
+        }
+      ])).reduce((obj, row) => {
+        let prop = programMap[row._id.toString()];
+        if (!obj[prop]) obj[prop] = { actual: 0, planned: 0, completion: 0 };
+        obj[prop].actual += row.actual;
+        obj[prop].planned += row.planned;
+        obj[prop].completion += row.completion;
+        portfolioTotal += row.planned;
+        return obj;
+      }, {});
+
+      for (let key in programCostAndCompletion) {
+        programCostAndCompletion[key].weightage = programCostAndCompletion[key].planned / portfolioTotal;
+      }
+
+      
+
+      let projectsSchedule = await projectModel.aggregate([{
+        $match: { program: { $in: programs } },
+      }, {
+        $project: {
+          plannedDays: { $divide: [{ $subtract: ["$expectedEndDate", "$expectedStartDate"] }, 864e5] },
+          actualDays: {
+            $divide: [{
+              $subtract: [{
+                $cond: { if: { $eq: ["$completed", 100] }, then: "$lastMonitoringDate", else: new Date() }
+              }, "$expectedStartDate"]
+            }, 864e5]
+          },
+
+        }
+      }, {
+        $group: {
+          _id: "$_id",
+          projectActualDays: { $sum: "$actualDays" },
+          projectPlannedDays: { $sum: "$plannedDays" }
+        }
+      }
+      ]);
+
+      let programsSchedule = projectsSchedule.reduce((obj, row) => {
+        let prop = programMap[row._id.toString()];
+        if (!obj[prop]) obj[prop] = { programActualDays: 0, programPlannedDays: 0 };
+        obj[prop].programActualDays += row.projectActualDays;
+        obj[prop].programPlannedDays += row.projectPlannedDays;
+        return obj;
+      }, {});
+
+
+
+      let data = {
+        allPrograms,
+        programCostAndCompletion,
+        programsSchedule,
+        plannedResourceBreakup,
+        plannedLaborBreakup,
+        plannedContractorEquipmentBreakup,
+        consumableMaterialBreakup,
+      };
+      return res.json({ success: true, data: data });
+    } catch (error) {
+      respondWithError(res, error, 'Error when getting task.');
+    }
+  },
+  portfoliosByManagerId: async function (req, res) {
+    const DATETIME = dateFormat(new Date(), 'yyyy-mm-dd HH:MM:ss');
+    try {
+
+      var allPortfolios = await portfolioModel.find({ }, { _id: 1, name: 1 }).lean();
+      var portfolios = allPortfolios.map((d) => d._id);
+      var allPrograms = await programModel.find({ portfolio: {$in: portfolios} }, { _id: 1, portfolio: 1 }).lean();
+      var programs = [];
+      let programToPortfolioMap = allPrograms.reduce((ob, program) => {
+        ob[program._id] = program.portfolio.toString();
+        programs.push(program._id);
+        return ob;
+      }, {})
+
+      var projects = []
+      var allProjects = await projectModel.find({ program: { $in: programs } }, { _id: 1, program: 1 }).lean();
+
+      let portfolioByProjectMap = allProjects.reduce((ob, project) => {
+        ob[project._id] = programToPortfolioMap[project.program.toString()];
+        projects.push(project._id);
+        return ob;
+      }, {})
+
+
+      let plannedResourceBreakup = (await taskPlannedResourceModel.aggregate([
+        {
+          $match: {
+            $and: [
+              { project: { $in: projects } },
+              { $or: [{ boqType: '1' }, { __type: 'TaskPlannedResource' }] }
+            ]
+          }
+        },
+        {
+          $group: {
+            _id: "$project",
+            total: { $sum: { $multiply: ['$cost', '$quantity'] } }
+          }
+        }
+      ])).reduce((obj, row) => {
+        let prop = portfolioByProjectMap[row._id.toString()];
+        if (!obj[prop]) obj[prop] = 0;
+        obj[prop] += row.total;
+        return obj;
+      }, {});
+      
+
+      let plannedLaborBreakup = (await taskPlannedResourceModel.aggregate([
+        {
+          $match: {
+            $and: [{ project: { $in: projects } }, { boqType: '1' }]
+          }
+        },
+        {
+          $group: {
+            _id: "$project",
+            total: { $sum: { $multiply: ['$cost', '$quantity'] } }
+          }
+        }
+      ])).reduce((obj, row) => {
+        let prop = portfolioByProjectMap[row._id.toString()];
+        if (!obj[prop]) obj[prop] = 0;
+        obj[prop] += row.total;
+        return obj;
+      }, {});
+
+     
+
+      let plannedContractorEquipmentBreakup = (await taskPlannedResourceModel.aggregate([
+        {
+          $match: {
+            $and: [{ project: { $in: projects } }, { boqType: '3' }]
+          }
+        },
+        {
+          $group: {
+            _id: "$project",
+            total: { $sum: { $multiply: ['$cost', '$quantity'] } }
+          }
+        }
+      ])).reduce((obj, row) => {
+        let prop = portfolioByProjectMap[row._id.toString()];
+        if (!obj[prop]) obj[prop] = 0;
+        obj[prop] += row.total;
+        return obj;
+      }, {});
+
+      let consumableMaterialBreakup = (await taskPlannedResourceModel.aggregate([
+        {
+          $match: {
+            $and: [{ project: { $in: projects } }, { boqType: '4' }, { top3: { $ne: 0 } }]
+          }
+        },
+        {
+          $group: {
+            _id: { material: '$description' },
+            total: { $sum: { $multiply: ['$cost', '$quantity'] } }
+          }
+        }
+      ])).reduce((obj, row) => {
+        if (!obj[row._id.material]) obj[row._id.material] = {};
+        obj[row._id.material] = row.total;
+        return obj;
+      }, {});
+
+
+      let portfolioTotal = 0;
+      let portfolioCostAndCompletion = (await taskModel.aggregate([
+        { $sort: { plannedStartDate: 1 } },
+        { $match: { project: { $in: projects }, workPackage: true } },
+        {
+          $group: {
+            _id: "$project",
+            actual: { $sum: '$actualCost' },
+            planned: { $sum: '$plannedCost' },
+            completion: { $sum: { $multiply: ['$weightage', '$completed'] } }
+          }
+        }
+      ])).reduce((obj, row) => {
+        let prop = portfolioByProjectMap[row._id.toString()];
+        if (!obj[prop]) obj[prop] = { actual: 0, planned: 0, completion: 0 };
+        obj[prop].actual += row.actual;
+        obj[prop].planned += row.planned;
+        obj[prop].completion += row.completion;
+        portfolioTotal += row.planned;
+        return obj;
+      }, {});
+
+      for (let key in portfolioCostAndCompletion) {
+        portfolioCostAndCompletion[key].weightage = portfolioCostAndCompletion[key].planned / portfolioTotal;
+      }
+
+      let projectsSchedule = await projectModel.aggregate([{
+        $match: { program: { $in: programs } },
+      }, {
+        $project: {
+          plannedDays: { $divide: [{ $subtract: ["$expectedEndDate", "$expectedStartDate"] }, 864e5] },
+          actualDays: {
+            $divide: [{
+              $subtract: [{
+                $cond: { if: { $eq: ["$completed", 100] }, then: "$lastMonitoringDate", else: new Date() }
+              }, "$expectedStartDate"]
+            }, 864e5]
+          },
+
+        }
+      }, {
+        $group: {
+          _id: "$_id",
+          projectActualDays: { $sum: "$actualDays" },
+          projectPlannedDays: { $sum: "$plannedDays" }
+        }
+      }
+      ]);
+
+
+
+      let portfoliosSchedule = projectsSchedule.reduce((obj, row) => {
+        let prop = portfolioByProjectMap[row._id.toString()];
+        if (!obj[prop]) obj[prop] = { portfolioActualDays: 0, portfolioPlannedDays: 0 };
+        obj[prop].portfolioActualDays += row.projectActualDays;
+        obj[prop].portfolioPlannedDays += row.projectPlannedDays;
+        return obj;
+      }, {});
+
+
+
+      let data = {
+        allPortfolios,
+        portfolioCostAndCompletion,
+        portfoliosSchedule,
+        plannedResourceBreakup,
+        plannedLaborBreakup,
+        plannedContractorEquipmentBreakup,
+        consumableMaterialBreakup,
       };
       return res.json({ success: true, data: data });
     } catch (error) {

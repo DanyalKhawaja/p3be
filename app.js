@@ -53,6 +53,8 @@ const benefitsNatureRoutes = require('./routes/benefitsNatureRoutes')
 const pptRoutes = require('./routes/pptRoutes')
 const pptCriteriaRoutes = require('./routes/pptCriteriaRoutes')
 const pptOptionsRoutes = require('./routes/pptOptionsRoutes');
+const pptOVsORoutes = require('./routes/pptOVsORoutes');
+const pptCVsCRoutes = require('./routes/pptCVsCRoutes');
 const companyRoutes = require('./routes/companyRoutes')
 const subscriptionRoutes = require('./routes/subscriptionRoutes');
 const componentRoutes = require('./routes/componentRoutes');
@@ -124,9 +126,20 @@ app.use("/program/benefit/monitoring", passport.authenticate('jwt', { session: f
 app.use("/stakeholder", passport.authenticate('jwt', { session: false }), stakeholderRoutes)
 app.use("/stakeholderrole", passport.authenticate('jwt', { session: false }), stakeholderRoleRoutes)
 app.use("/benefitsnature", passport.authenticate('jwt', { session: false }), benefitsNatureRoutes)
+
+
+
 app.use("/ppt", passport.authenticate('jwt', { session: false }), pptRoutes)
+
 app.use("/pptCriteria", passport.authenticate('jwt', { session: false }), pptCriteriaRoutes)
+
 app.use("/pptOptions", passport.authenticate('jwt', { session: false }), pptOptionsRoutes)
+
+app.use("/pptOVsO", passport.authenticate('jwt', { session: false }), pptOVsORoutes);
+app.use("/pptCVsC", passport.authenticate('jwt', { session: false }), pptCVsCRoutes);
+
+
+
 app.use("/component",passport.authenticate('jwt', { session: false }),componentRoutes)
 
 module.exports = app;

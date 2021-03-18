@@ -1,13 +1,14 @@
 const dateFormat = require("dateformat");
-const pptModel = require("../models/pptModel");
+const pptCVsCModel = require("../models/pptCVsCModel");
 const log = require('../lib/logger');
-const { ObjectId } = require("mongoose").Types;
+const { ObjectId } = require('mongoose').Types;
+
 module.exports = {
   byPptId: function (req, res) {
     try {
       const DATETIME = dateFormat(new Date(), "yyyy-mm-dd HH:MM:ss");
       var pptId = req.params.pptId;
-      pptModel.findById(pptId)
+      pptCVsCModel.find({ pptId: ObjectId(pptId) }).sort({sequence: 1})
         .exec(function (err, ppt) {
           if (err) {
             const LOGMESSAGE = DATETIME + "|" + err.message;
@@ -41,27 +42,34 @@ module.exports = {
       });
     }
   },
-  byPortfolioId: async function (req, res) {
+  byPptIdEnabled: function (req, res) {
     try {
       const DATETIME = dateFormat(new Date(), "yyyy-mm-dd HH:MM:ss");
-      var id = req.params.portfolioId;
-      let ppt = await pptModel.find({ portfolioId: id }).exec();
-
-      if (!ppt) {
-        const LOGMESSAGE = DATETIME + "|No such ppt with portfolio:" + id;
-        log.write("ERROR", LOGMESSAGE);
-        return res.status(404).json({
-          success: false,
-          msg: "No such ppt with portfolio:" + id
+      var pptId = req.params.pptId;
+      pptCVsCModel.find({ _id: pptId, disabled: false })
+        .exec(function (err, ppt) {
+          if (err) {
+            const LOGMESSAGE = DATETIME + "|" + err.message;
+            log.write("ERROR", LOGMESSAGE);
+            return res.status(500).json({
+              success: false,
+              msg: "Error when getting ppt.",
+              error: err
+            });
+          }
+          if (!ppt) {
+            const LOGMESSAGE = DATETIME + "|No such ppt:" + pptId + " & portfolio:" + pid;
+            log.write("ERROR", LOGMESSAGE);
+            return res.status(404).json({
+              success: false,
+              msg: "|No such ppt:" + pptId + " & portfolio:" + pid
+            });
+          }
+          const LOGMESSAGE = DATETIME + "|ppt Found";
+          log.write("INFO", LOGMESSAGE);
+          return res.json({ success: true, data: ppt });
+          // return res.json(ppt);
         });
-      }
-
-
-      const LOGMESSAGE = DATETIME + "|ppt Found";
-      log.write("INFO", LOGMESSAGE);
-      return res.json({ success: true, data: ppt });
-      // return res.json(ppt);
-
     } catch (error) {
       const LOGMESSAGE = DATETIME + "|" + error.message;
       log.write("ERROR", LOGMESSAGE);
@@ -73,22 +81,10 @@ module.exports = {
     }
   },
   create: function (req, res) {
-    const DATETIME = dateFormat(new Date(), "yyyy-mm-dd HH:MM:ss");
     try {
-      var ppt = new pptModel({
-        _id: ObjectId(req.body._id),
-        name: req.body.name,
-        description: req.body.description,
-        optionList: req.body.optionList,
-        options: req.body.options,
-        criteriaDetails: req.body.criteriaDetails,
-        weightList: req.body.weightList,
-        criteriaList: req.body.criteriaList,
-        portfolioId: req.body.portfolioId,
-        createdBy: req.body.createdBy,
-      });
-
-      ppt.save(function (err, ppt) {
+      const DATETIME = dateFormat(new Date(), "yyyy-mm-dd HH:MM:ss");
+      req.body.forEach((d,i)=>{req.body[i].pptId = ObjectId(req.body[i].pptId)})
+      pptCVsCModel.collection.insertMany(req.body, function (err, ppt) {
         if (err) {
           const LOGMESSAGE = DATETIME + "|" + err.message;
           log.write("ERROR", LOGMESSAGE);
@@ -123,43 +119,46 @@ module.exports = {
     try {
       const DATETIME = dateFormat(new Date(), "yyyy-mm-dd HH:MM:ss");
       var id = req.params.id;
-      pptModel.findOne({ _id: id }, function (err, ppt) {
+      pptCVsCModel.findOne({ _id: id }, function (err, pptCVsC) {
         if (err) {
           const LOGMESSAGE = DATETIME + "|" + err.message;
           log.write("ERROR", LOGMESSAGE);
           return res.status(500).json({
             success: false,
-            msg: "Error when getting ppt",
+            msg: "Error when getting pptCVsC",
             error: err
           });
         }
-        if (!ppt) {
-          const LOGMESSAGE = DATETIME + "|No such ppt to update:" + id;
+        if (!pptCVsC) {
+          const LOGMESSAGE = DATETIME + "|No such pptCVsC to update:" + id;
           log.write("ERROR", LOGMESSAGE);
           return res.status(404).json({
             success: false,
-            msg: "No such ppt"
+            msg: "No such pptCVsC"
           });
         }
+        pptCVsC.criteriaId = req.body.criteriaId ? req.body.criteriaId : pptCVsC.criteriaId;
+        pptCVsC.criteriaId1 = req.body.criteriaId1 ? req.body.criteriaId1 : pptCVsC.criteriaId1;
+        pptCVsC.criteriaId2 = req.body.criteriaId2 ? req.body.criteriaId2 : pptCVsC.criteriaId2;
+        pptCVsC.rowNo = req.body.rowNo ? req.body.rowNo : pptCVsC.rowNo;
+        pptCVsC.columnNo = req.body.columnNo ? req.body.columnNo : pptCVsC.columnNo;
+        pptCVsC.criteriaWeight = req.body.criteriaWeight ? req.body.criteriaWeight : pptCVsC.criteriaWeight;
+        pptCVsC.updatedBy = req.body.updatedBy;
+        pptCVsC.updatedDate = DATETIME;
 
-        ppt.name = req.body['name'] ? req.body['name'] : ppt.name
-        ppt.description = req.body['description'] ? req.body['description'] : ppt.description
-        ppt.updatedBy = req.body.updatedBy;
-        ppt.updatedDate = DATETIME;
-
-        ppt.save(function (err, ppt) {
+        pptCVsC.save(function (err, pptCVsC) {
           if (err) {
             const LOGMESSAGE = DATETIME + "|" + err.message;
             log.write("ERROR", LOGMESSAGE);
             return res.status(500).json({
               success: false,
-              msg: "Error when updating ppt.",
+              msg: "Error when updating pptCVsC.",
               error: err
             });
           }
-          const LOGMESSAGE = DATETIME + "|Updated ppt:" + id;
+          const LOGMESSAGE = DATETIME + "|Updated pptCVsC:" + id;
           log.write("INFO", LOGMESSAGE);
-          return res.json({ success: true, msg: "ppt is updated", data: ppt });
+          return res.json({ success: true, msg: "pptCVsC is updated", data: pptCVsC });
           // return res.json(ppt);
         });
       });
@@ -168,7 +167,7 @@ module.exports = {
       log.write("ERROR", LOGMESSAGE);
       return res.status(500).json({
         success: false,
-        msg: "Error when getting ppt.",
+        msg: "Error when getting pptCVsC.",
         error: error
       });
     }
@@ -179,7 +178,7 @@ module.exports = {
     try {
       const DATETIME = dateFormat(new Date(), "yyyy-mm-dd HH:MM:ss");
       var id = req.params.id;
-      pptModel.deleteOne({ _id: id }, function (err, ppt) {
+      pptCVsCModel.deleteOne({ _id: id }, function (err, ppt) {
         if (err) {
           const LOGMESSAGE = DATETIME + "|" + err.message;
           log.write("ERROR", LOGMESSAGE);

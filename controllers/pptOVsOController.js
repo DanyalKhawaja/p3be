@@ -1,13 +1,13 @@
 const dateFormat = require("dateformat");
-const pptModel = require("../models/pptModel");
+const pptOVsOModel = require("../models/pptOVsOModel");
 const log = require('../lib/logger');
-const { ObjectId } = require("mongoose").Types;
+const { ObjectId } = require('mongoose').Types;
 module.exports = {
   byPptId: function (req, res) {
     try {
       const DATETIME = dateFormat(new Date(), "yyyy-mm-dd HH:MM:ss");
       var pptId = req.params.pptId;
-      pptModel.findById(pptId)
+      pptOVsOModel.find({ pptId: ObjectId(pptId) }).sort({sequence: 1})
         .exec(function (err, ppt) {
           if (err) {
             const LOGMESSAGE = DATETIME + "|" + err.message;
@@ -41,54 +41,13 @@ module.exports = {
       });
     }
   },
-  byPortfolioId: async function (req, res) {
-    try {
-      const DATETIME = dateFormat(new Date(), "yyyy-mm-dd HH:MM:ss");
-      var id = req.params.portfolioId;
-      let ppt = await pptModel.find({ portfolioId: id }).exec();
 
-      if (!ppt) {
-        const LOGMESSAGE = DATETIME + "|No such ppt with portfolio:" + id;
-        log.write("ERROR", LOGMESSAGE);
-        return res.status(404).json({
-          success: false,
-          msg: "No such ppt with portfolio:" + id
-        });
-      }
-
-
-      const LOGMESSAGE = DATETIME + "|ppt Found";
-      log.write("INFO", LOGMESSAGE);
-      return res.json({ success: true, data: ppt });
-      // return res.json(ppt);
-
-    } catch (error) {
-      const LOGMESSAGE = DATETIME + "|" + error.message;
-      log.write("ERROR", LOGMESSAGE);
-      return res.status(500).json({
-        success: false,
-        msg: "Error when getting ppt.",
-        error: error
-      });
-    }
-  },
   create: function (req, res) {
     const DATETIME = dateFormat(new Date(), "yyyy-mm-dd HH:MM:ss");
     try {
-      var ppt = new pptModel({
-        _id: ObjectId(req.body._id),
-        name: req.body.name,
-        description: req.body.description,
-        optionList: req.body.optionList,
-        options: req.body.options,
-        criteriaDetails: req.body.criteriaDetails,
-        weightList: req.body.weightList,
-        criteriaList: req.body.criteriaList,
-        portfolioId: req.body.portfolioId,
-        createdBy: req.body.createdBy,
-      });
-
-      ppt.save(function (err, ppt) {
+    
+      req.body.forEach((d,i)=>{req.body[i].pptId = ObjectId(req.body[i].pptId)})
+      pptOVsOModel.collection.insertMany(req.body,function (err, ppt) {
         if (err) {
           const LOGMESSAGE = DATETIME + "|" + err.message;
           log.write("ERROR", LOGMESSAGE);
@@ -123,43 +82,46 @@ module.exports = {
     try {
       const DATETIME = dateFormat(new Date(), "yyyy-mm-dd HH:MM:ss");
       var id = req.params.id;
-      pptModel.findOne({ _id: id }, function (err, ppt) {
+      pptOVsOModel.findOne({ _id: id }, function (err, pptOVsO) {
         if (err) {
           const LOGMESSAGE = DATETIME + "|" + err.message;
           log.write("ERROR", LOGMESSAGE);
           return res.status(500).json({
             success: false,
-            msg: "Error when getting ppt",
+            msg: "Error when getting pptOVsO",
             error: err
           });
         }
-        if (!ppt) {
-          const LOGMESSAGE = DATETIME + "|No such ppt to update:" + id;
+        if (!pptOVsO) {
+          const LOGMESSAGE = DATETIME + "|No such pptOVsO to update:" + id;
           log.write("ERROR", LOGMESSAGE);
           return res.status(404).json({
             success: false,
-            msg: "No such ppt"
+            msg: "No such pptOVsO"
           });
         }
+        pptOVsO.criteriaId = req.body.criteriaId ? req.body.criteriaId : pptOVsO.criteriaId;
+        pptOVsO.optionId1 = req.body.optionId1 ? req.body.optionId1 : pptOVsO.optionId1;
+        pptOVsO.optionId2 = req.body.optionId2 ? req.body.optionId2 : pptOVsO.optionId2;
+        pptOVsO.rowNo = req.body.rowNo ? req.body.rowNo : pptOVsO.rowNo;
+        pptOVsO.columnNo = req.body.columnNo ? req.body.columnNo : pptOVsO.columnNo;
+        pptOVsO.optionWeight = req.body.optionWeight ? req.body.optionWeight : pptOVsO.optionWeight;
+        pptOVsO.updatedBy = req.body.updatedBy;
+        pptOVsO.updatedDate = DATETIME;
 
-        ppt.name = req.body['name'] ? req.body['name'] : ppt.name
-        ppt.description = req.body['description'] ? req.body['description'] : ppt.description
-        ppt.updatedBy = req.body.updatedBy;
-        ppt.updatedDate = DATETIME;
-
-        ppt.save(function (err, ppt) {
+        pptOVsO.save(function (err, pptOVsO) {
           if (err) {
             const LOGMESSAGE = DATETIME + "|" + err.message;
             log.write("ERROR", LOGMESSAGE);
             return res.status(500).json({
               success: false,
-              msg: "Error when updating ppt.",
+              msg: "Error when updating pptOVsO.",
               error: err
             });
           }
-          const LOGMESSAGE = DATETIME + "|Updated ppt:" + id;
+          const LOGMESSAGE = DATETIME + "|Updated pptOVsO:" + id;
           log.write("INFO", LOGMESSAGE);
-          return res.json({ success: true, msg: "ppt is updated", data: ppt });
+          return res.json({ success: true, msg: "pptOVsO is updated", data: pptOVsO });
           // return res.json(ppt);
         });
       });
@@ -168,7 +130,7 @@ module.exports = {
       log.write("ERROR", LOGMESSAGE);
       return res.status(500).json({
         success: false,
-        msg: "Error when getting ppt.",
+        msg: "Error when getting pptOVsO.",
         error: error
       });
     }
@@ -179,7 +141,7 @@ module.exports = {
     try {
       const DATETIME = dateFormat(new Date(), "yyyy-mm-dd HH:MM:ss");
       var id = req.params.id;
-      pptModel.deleteOne({ _id: id }, function (err, ppt) {
+      pptOVsOModel.deleteOne({ _id: id }, function (err, ppt) {
         if (err) {
           const LOGMESSAGE = DATETIME + "|" + err.message;
           log.write("ERROR", LOGMESSAGE);

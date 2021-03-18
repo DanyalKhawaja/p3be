@@ -7,7 +7,7 @@ const pptController = require("../controllers/pptController");
 /*
  * GET PPT By Portfolio ID & PPT ID
  */
- router.get("/:portfolioId/:pptId", pptController.byPortfolioPptId);
+ router.get("/:pptId", pptController.byPptId);
 
  /*
  * GET PPT By Portfolio ID

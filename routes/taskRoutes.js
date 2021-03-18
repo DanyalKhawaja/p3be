@@ -46,6 +46,11 @@ router.get("/dashboardByProgram/:id", taskController.dashboardByProgramId);
 router.get("/dashboardByPortfolio/:id", taskController.dashboardByPortfolioId);
 router.get("/programGovernance/:id", taskController.programGovernance);
 router.get("/portfolioGovernance", taskController.portfolioGovernance);
+router.get("/projectsByPortfolio/:id", taskController.projectsByPortfolioId);
+router.get("/portfoliosByManager/:id", taskController.portfoliosByManagerId);
+router.get("/programsByPortfolio/:id", taskController.programsByPortfolioId);
+
+
 /*
  * GET First Name By ID
  */

@@ -3,7 +3,7 @@ const router = express.Router();
 
 const pptCriteriaController = require("../controllers/pptCriteriaController");
 
-
+router.get("/", pptCriteriaController.get);
  /*
  * GET PPT By PPT ID
  */
