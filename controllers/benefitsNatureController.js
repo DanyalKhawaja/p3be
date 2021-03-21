@@ -21,7 +21,7 @@ module.exports = {
         const LOGMESSAGE = DATETIME + "|Benefits Nature List found";
         log.write("INFO", LOGMESSAGE);
         return res.json({ success: true, data: benefitsNature });
-      });
+      }).sort({$natural:-1});
     } catch (error) {
       const LOGMESSAGE = DATETIME + "|" + error.message;
       log.write("ERROR", LOGMESSAGE);

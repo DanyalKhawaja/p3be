@@ -18,7 +18,7 @@ module.exports = {
         const LOGMESSAGE = DATETIME + "|Resource List found";
         log.write("INFO", LOGMESSAGE);
         return res.json({success: true, data: resource});
-      }).populate("resourceType", "name");
+      }).sort({$natural:-1}).populate("resourceType", "name");
     } catch (error) {
       const LOGMESSAGE = DATETIME + "|" + err.message;
       log.write("ERROR", LOGMESSAGE);

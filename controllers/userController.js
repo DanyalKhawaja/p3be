@@ -24,7 +24,7 @@ module.exports = {
         const LOGMESSAGE = DATETIME + "| User found";
         log.write("INFO", LOGMESSAGE);
         return res.json({ success: true, data: users });
-      })
+      }).sort({$natural:-1})
         .populate('department', 'name')
         .populate('role', ['name', 'code'])
         .populate('lineManager', 'username')
@@ -156,7 +156,7 @@ module.exports = {
             msg: "No such user"
           });
         }
-
+  
         user.username = req.body.username ? req.body.username : user.username;
         user.email = req.body.email ? req.body.email : user.email;
         user.password = req.body.password ? req.body.password : user.password;
@@ -167,8 +167,8 @@ module.exports = {
         user.middleName = req.body.middleName ? req.body.middleName : user.middleName;
         user.phoneNo = req.body.phoneNo ? req.body.phoneNo : user.phoneNo;
         user.companyId = req.body.companyId ? req.body.companyId : user.companyId;
-        user.deptId = req.body.deptId ? req.body.deptId : user.deptId;
-        user.roleId = req.body.roleId ? req.body.roleId : user.roleId;
+        user.department = req.body.department ? req.body.department : user.department;
+        user.role = req.body.role ? req.body.role : user.role;
         user.lineManager = req.body.lineManager ? req.body.lineManager : user.lineManager;
         user.employmentType = req.body.employmentType ? req.body.employmentType : user.employmentType;
         user.createdBy = req.body.createdBy ? req.body.createdBy : user.createdBy;
@@ -177,6 +177,7 @@ module.exports = {
         user.joiningDate = req.body.joiningDate ? req.body.joiningDate : user.joiningDate;
         user.status = req.body.status ? req.body.status : user.status;
         user.isVerified = req.body.isVerified ? req.body.isVerified : user.isVerified;
+        console.log(req.body)
         if (req.body.password) {
           user.setPassword(user, (error, isSet) => {
             if (error) {

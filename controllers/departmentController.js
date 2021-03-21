@@ -21,7 +21,7 @@ module.exports = {
         const LOGMESSAGE = DATETIME + "|Department List found";
         log.write("INFO", LOGMESSAGE);
         return res.json({ success: true, data: department });
-      }).populate('HOD', 'username');
+      }).sort({$natural:-1}).populate('HOD', 'username');
     } catch (error) {
       const LOGMESSAGE = DATETIME + "|" + error.message;
       log.write("ERROR", LOGMESSAGE);
@@ -122,7 +122,7 @@ module.exports = {
           log.write("ERROR", LOGMESSAGE);
           return res.status(500).json({
             success: false,
-            msg: "Error when creating department",
+            msg:  err.code == 11000 ? "Department already exists!" : "Error when creating department",
             error: err
           });
         }
@@ -132,10 +132,11 @@ module.exports = {
       });
     } catch (error) {
       const LOGMESSAGE = DATETIME + "|" + error.message;
+      console.dir(error);
       log.write("ERROR", LOGMESSAGE);
       return res.status(500).json({
         success: false,
-        msg: "Error when getting department.",
+        msg: "Error when getting department!",
         error: error
       });
     }

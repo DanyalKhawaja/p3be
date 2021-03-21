@@ -21,7 +21,7 @@ module.exports = {
         const LOGMESSAGE = DATETIME + "|Role List found";
         log.write("INFO", LOGMESSAGE);
         return res.json({success:true,data:role});
-      });      
+      }).sort({$natural:-1});      
     } catch (error) {
       const LOGMESSAGE = DATETIME + "|" + error.message;
       log.write("ERROR", LOGMESSAGE);
@@ -115,6 +115,7 @@ module.exports = {
     try {
       const DATETIME = dateFormat(new Date(), "yyyy-mm-dd HH:MM:ss");
       var role = new roleModel({
+        code: req.body.code,
         name: req.body.name,
         description: req.body.description
       });

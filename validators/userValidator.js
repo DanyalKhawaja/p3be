@@ -40,7 +40,7 @@ module.exports = {
     }
   ],
   update: [
-    check('updatedBy', 'Updated By is reuired').not().isEmpty(),
+    check('updatedBy', 'Updated By is required').not().isEmpty(),
     function (req, res, next) {
       // Check Errors
       const DATETIME = dateFormat(new Date(), "yyyy-mm-dd HH:MM:ss");
