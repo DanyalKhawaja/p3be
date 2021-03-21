@@ -1,7 +1,7 @@
 var mongoose = require("mongoose");
 var schema = mongoose.Schema;
 
-var pptCvsCSchema = new schema(
+var pptCVsCSchema = new schema(
   {
     pptId: {
       type: mongoose.Schema.ObjectId,
@@ -40,4 +40,4 @@ var pptCvsCSchema = new schema(
   }
 );
 
-module.exports = mongoose.model("PPTCvsC", pptCvsCSchema);
+module.exports = mongoose.model("PPTCVsC", pptCVsCSchema);

@@ -1,7 +1,7 @@
 var mongoose = require("mongoose");
 var schema = mongoose.Schema;
 
-var pptOvsOSchema = new schema(
+var pptOVsOSchema = new schema(
   {
     pptId: {
       type: mongoose.Schema.ObjectId,
@@ -45,4 +45,4 @@ var pptOvsOSchema = new schema(
   }
 );
 
-module.exports = mongoose.model("PPTOvsO", pptOvsOSchema);
+module.exports = mongoose.model("PPTOVsO", pptOVsOSchema);
