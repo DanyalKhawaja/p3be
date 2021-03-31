@@ -14,7 +14,7 @@ var taskUtilizedResourceBaseSchema = new Schema({
   quantity: { type: Number, required: true },
   actualCostPerUnit: { type: Number, required: true },
   description: { type: String },
-  taskPlannedResource: {type: mongoose.Schema.ObjectId, ref: 'TaskPlannedResource'}
+  // taskPlannedResource: {type: mongoose.Schema.ObjectId, ref: 'TaskPlannedResource'}
 },
   {
     discriminatorKey: "__type",

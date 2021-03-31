@@ -422,7 +422,7 @@ module.exports = {
   create: function (req, res) {
     try {
       const DATETIME = dateFormat(new Date(), "yyyy-mm-dd HH:MM:ss");
-      let { body } = req;
+      let { monitoring } = req.body;
       // var monitoring = new monitoringModel({
 
 
@@ -437,9 +437,9 @@ module.exports = {
       //   createdBy: req.body.createdBy
 
       // });
-      var monitoring = new monitoringModel(body);
+      var doc = new monitoringModel(monitoring);
 
-      monitoring.save(function (err, monitoring) {
+      doc.save(function (err, monitoring) {
         if (err) {
           const LOGMESSAGE = DATETIME + "|" + err.message;
           log.write("ERROR", LOGMESSAGE);

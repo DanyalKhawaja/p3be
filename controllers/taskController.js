@@ -109,29 +109,39 @@ module.exports = {
         plannedStartDate: {
           $lte: new Date()
         },
-        $or: [
-          {
-            $and: [
-              {
-                actualStartDate: {
-                  $ne: null
-                }
-              },
-              {
-                monitoringStatus: {
-                  $nin: ['CLOSED', 'SYSTEM']
-                }
-              },
-              {
-                completed: { $ne: 100 }
-              }
-            ]
-          },
-          {
-            workPackage: false
-          }
-        ]
+        // actualStartDate: {
+        //   $ne: null
+        // },
+        // monitoringStatus: {
+        //   $nin: ['CLOSED', 'SYSTEM']
+        // },
+        completed: { $ne: 100 },
+        workPackage: true
       };
+
+      // $or: [
+      //   {
+      //     $and: [
+      //       {
+      //         actualStartDate: {
+      //           $ne: null
+      //         }
+      //       },
+      //       {
+      //         monitoringStatus: {
+      //           $nin: ['CLOSED', 'SYSTEM']
+      //         }
+      //       },
+      //       {
+      //         completed: { $ne: 100 }
+      //       }
+      //     ]
+      //   },
+      //   {
+      //     workPackage: false
+      //   }
+      // ]
+
 
       taskModel
         .find(qq, function (err, task) {
@@ -497,7 +507,7 @@ module.exports = {
       var portfolio = ObjectId(req.params.id);
       var programs = (await programModel.find({ portfolio }, { _id: 1 }).lean()).map(d => d._id);
       var projects = (await projectModel.find({ program: { $in: programs } }, { _id: 1 }).lean()).map((d) => d._id);
-      let allProjects = await projectModel.find({ program : { $in: programs }}, { _id: 1, name: 1 }).lean();
+      let allProjects = await projectModel.find({ program: { $in: programs } }, { _id: 1, name: 1 }).lean();
 
 
       let plannedResourceBreakup = (await taskPlannedResourceModel.aggregate([
@@ -521,7 +531,7 @@ module.exports = {
         return obj;
       }, {});
 
-    
+
       let plannedLaborBreakup = (await taskPlannedResourceModel.aggregate([
         {
           $match: {
@@ -540,7 +550,7 @@ module.exports = {
         return obj;
       }, {});
 
-          let plannedContractorEquipmentBreakup = (await taskPlannedResourceModel.aggregate([
+      let plannedContractorEquipmentBreakup = (await taskPlannedResourceModel.aggregate([
         {
           $match: {
             $and: [{ project: { $in: projects } }, { boqType: '3' }]
@@ -612,7 +622,7 @@ module.exports = {
 
 
       let projectsSchedule = await projectModel.aggregate([{
-        $match: { program: {$in: programs}},
+        $match: { program: { $in: programs } },
       }, {
         $project: {
           plannedDays: { $divide: [{ $subtract: ["$expectedEndDate", "$expectedStartDate"] }, 864e5] },
@@ -1081,7 +1091,7 @@ module.exports = {
         obj[prop] += row.total;
         return obj;
       }, {});
-     
+
       let plannedLaborBreakup = (await taskPlannedResourceModel.aggregate([
         {
           $match: {
@@ -1100,7 +1110,7 @@ module.exports = {
         obj[prop] += row.total;
         return obj;
       }, {});
-     
+
 
       let plannedContractorEquipmentBreakup = (await taskPlannedResourceModel.aggregate([
         {
@@ -1166,7 +1176,7 @@ module.exports = {
         programCostAndCompletion[key].weightage = programCostAndCompletion[key].planned / portfolioTotal;
       }
 
-      
+
 
       let projectsSchedule = await projectModel.aggregate([{
         $match: { program: { $in: programs } },
@@ -1219,9 +1229,9 @@ module.exports = {
     const DATETIME = dateFormat(new Date(), 'yyyy-mm-dd HH:MM:ss');
     try {
 
-      var allPortfolios = await portfolioModel.find({ }, { _id: 1, name: 1 }).lean();
+      var allPortfolios = await portfolioModel.find({}, { _id: 1, name: 1 }).lean();
       var portfolios = allPortfolios.map((d) => d._id);
-      var allPrograms = await programModel.find({ portfolio: {$in: portfolios} }, { _id: 1, portfolio: 1 }).lean();
+      var allPrograms = await programModel.find({ portfolio: { $in: portfolios } }, { _id: 1, portfolio: 1 }).lean();
       var programs = [];
       let programToPortfolioMap = allPrograms.reduce((ob, program) => {
         ob[program._id] = program.portfolio.toString();
@@ -1260,7 +1270,7 @@ module.exports = {
         obj[prop] += row.total;
         return obj;
       }, {});
-      
+
 
       let plannedLaborBreakup = (await taskPlannedResourceModel.aggregate([
         {
@@ -1281,7 +1291,7 @@ module.exports = {
         return obj;
       }, {});
 
-     
+
 
       let plannedContractorEquipmentBreakup = (await taskPlannedResourceModel.aggregate([
         {
@@ -2530,80 +2540,58 @@ module.exports = {
       respondWithError(res, error, 'Error when getting task.');
     }
   },
-  updateMonitoredWorkPackage: function (req, res) {
+  updateStatus: function (req, res) {
     const DATETIME = dateFormat(new Date(), 'yyyy-mm-dd HH:MM:ss');
-    try {
-      var monitoredWorkPackages = req.body;
-      monitoredWorkPackages.forEach(async (d) => {
-        await taskModel.updateOne(
-          { _id: d._id },
-          {
-            actualCost: d.actualCost,
-            lastMonitoredOn: DATETIME,
-            ...(d.completed && {
-              actualEndDate: d.completed == 100 ? DATETIME : null,
-              monitoringStatus: d.monitoringStatus,
-              completed: d.completed
-            })
-          }
-        );
+    var { updatedStatus } = req.body;
+    taskModel.findByIdAndUpdate(updatedStatus._id, {
+      actualCost: updatedStatus.actualCost,
+      lastMonitoredOn: DATETIME,
+      ...(updatedStatus.completed && {
+        actualEndDate: updatedStatus.completed == 100 ? DATETIME : null,
+        monitoringStatus: updatedStatus.monitoringStatus,
+        completed: updatedStatus.completed
+      })
+    }).then(({ _doc }) => {
+      res.status(200).json(_doc);
+    }).catch(error => {
+      const LOGMESSAGE = DATETIME + "|" + error.message;
+      log.write("ERROR", LOGMESSAGE);
+      return res.status(500).json({
+        success: false,
+        msg: "Error when getting task",
+        error: error,
       });
-      const LOGMESSAGE = DATETIME + '|Updated tasks:';
-      log.write('INFO', LOGMESSAGE);
-      return res.status(200).json({
-        success: true,
-        msg: 'Monitored Tasks updated',
-        error: null
-      });
-    } catch (error) {
-      //   taskModel.findOne({ _id: element._id }, function (err, task) {
-      //     if (err) {
-      //       const LOGMESSAGE = DATETIME + "|" + err.message;
-      //       log.write("ERROR", LOGMESSAGE);
-      //       return res.status(500).json({
-      //         success: false,
-      //         msg: "Error when getting task",
-      //         error: err,
-      //       });
-      //     }
-      //     if (!task) {
-      //       const LOGMESSAGE =
-      //         DATETIME + "|No such task to update:" + element._id;
-      //       log.write("ERROR", LOGMESSAGE);
-      //       return res.status(404).json({
-      //         success: false,
-      //         msg: "No such task with id" + element._id,
-      //       });
-      //     }
+    });
 
-      //     if (element.monitoringStatus) task.monitoringStatus = element.monitoringStatus;
-      //     task.lastMonitoredOn = DATETIME;
-      //     if (element.actualStartDate) task.actualStartDate = element.actualStartDate;
-      //     if (element.quantityConsumed) task.quantityConsumed = (task.quantityConsumed ?? 0) + element.quantityConsumed;
-      //     if (element.actualCost) task.actualCost = (task.actualCost ?? 0) + element.actualCost;
-      //     if (element.lastMonitoredOn) task.lastMonitoredOn =  DATETIME;
-      //     if (element.completed) task.completed = element.completed;
-      //     if (element.updatedBy) task.updatedBy = element.updatedBy
-      //     task.updatedDate = DATETIME;
-      //     task.save(function (err, task) {
-      //       if (err) {
-      //         const LOGMESSAGE = DATETIME + "|" + err.message;
-      //         log.write("ERROR", LOGMESSAGE);
-      //         return res.status(500).json({
-      //           success: false,
-      //           msg: "Error when updating task.",
-      //           error: err,
-      //         });
-      //       }
 
-      //       const LOGMESSAGE = DATETIME + "|Updated task:" + element._id;
-      //       log.write("INFO", LOGMESSAGE);
-      //       return res.json({ success: true, msg: "task list is updated" });
-      //     });
-      //   });
 
-      respondWithError(res, error, 'Error when getting task.');
-    }
+    //     if (element.monitoringStatus) task.monitoringStatus = element.monitoringStatus;
+    //     task.lastMonitoredOn = DATETIME;
+    //     if (element.actualStartDate) task.actualStartDate = element.actualStartDate;
+    //     if (element.quantityConsumed) task.quantityConsumed = (task.quantityConsumed ?? 0) + element.quantityConsumed;
+    //     if (element.actualCost) task.actualCost = (task.actualCost ?? 0) + element.actualCost;
+    //     if (element.lastMonitoredOn) task.lastMonitoredOn =  DATETIME;
+    //     if (element.completed) task.completed = element.completed;
+    //     if (element.updatedBy) task.updatedBy = element.updatedBy
+    //     task.updatedDate = DATETIME;
+    //     task.save(function (err, task) {
+    //       if (err) {
+    //         const LOGMESSAGE = DATETIME + "|" + err.message;
+    //         log.write("ERROR", LOGMESSAGE);
+    //         return res.status(500).json({
+    //           success: false,
+    //           msg: "Error when updating task.",
+    //           error: err,
+    //         });
+    //       }
+
+    //       const LOGMESSAGE = DATETIME + "|Updated task:" + element._id;
+    //       log.write("INFO", LOGMESSAGE);
+    //       return res.json({ success: true, msg: "task list is updated" });
+    //     });
+    //   });
+
+
   },
   update: function (req, res) {
     try {

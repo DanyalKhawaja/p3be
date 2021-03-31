@@ -27,7 +27,7 @@ router.delete("/:taskId/:projectId", taskController.remove);
 router.post("/wbs", taskController.wbs);
 router.put("/wbs", taskController.updateWorkPackages);
 
-router.put("/wbs_single", taskController.updateMonitoredWorkPackage);
+router.put("/updateStatus", taskController.updateStatus);
 
 /*
  * GET Task By ID

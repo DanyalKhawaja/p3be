@@ -5,10 +5,10 @@ var monitoringSchema = new Schema(
     project: {
       type: ObjectId, ref: 'Project', required: true
     },
-    task: {
-      type: ObjectId, ref: 'Task', required: true
+    // task: {
+    //   type: ObjectId, ref: 'Task', required: true
 
-    },
+    // },
     taskId: {
       type: String, required: true
 

@@ -28,7 +28,7 @@ var taskPlannedResourceSchema = new schema({
    projectLocation: {
       type: mongoose.Schema.ObjectId,
       ref: "ProjectLocation",
-      required: true
+      // required: true
    }
 });
 

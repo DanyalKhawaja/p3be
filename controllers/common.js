@@ -2,7 +2,7 @@ const dateFormat = require("dateformat");
 const { add, format, eachMonthOfInterval } = require('date-fns');
 
 const createMonthlyArray = (start) => {
-    let monthsList = eachMonthOfInterval({ start, end: add(new Date(), { months: 1 })});
+    let monthsList = eachMonthOfInterval({ start, end: add(new Date(), { months: 1 }) });
     return monthsList.map(month => ({
         _id: format(month, 'yyyy-MM'),
         plannedCost: 0,
@@ -118,5 +118,6 @@ function respondWithNotFound(res, msg) {
         msg: msg
     });
 }
+
 
 module.exports = { createMonthlyArray, respondWithError, nextCycle, getFirstDate, getFt, businessDays };

@@ -36,7 +36,7 @@ module.exports = {
       });
     }
 
-    
+
   },
 
   show: function (req, res) {
@@ -122,67 +122,55 @@ module.exports = {
     const DATETIME = dateFormat(new Date(), "yyyy-mm-dd HH:MM:ss");
     let errors = [], data = [];
     try {
-      if (req.body.tasks.length > 0) {
-        
-       let result = await monitoringModel.insertMany(req.body.tasks, function (err, tasks) {
-          if (err) {
-            const LOGMESSAGE = DATETIME + "|" + err.message;
-            log.write("ERROR", LOGMESSAGE);
-            errors.push({
-              success: false,
-              msg: "Error when creating monitoring",
-              error: err
-            });
-          }
-          const LOGMESSAGE = DATETIME + "|monitoring created";
-          log.write("INFO", LOGMESSAGE);
-          // return res.status(201).json(monitoring);
-
-        });
-        data.push({ success: true, msg: "monitoring is created", data: result });
-
-      }
-
- 
+    //   if (req.body.tasks.length > 0) {
+    //     await monitoringModel.insertMany(req.body.tasks).then((_doc) => {
+    //       data.push({ success: true, msg: "monitoring is created", data: _doc });
+    //       const LOGMESSAGE = DATETIME + "|monitoring created";
+    //       log.write("INFO", LOGMESSAGE);
+    //     }).catch(err => {
+    //       const LOGMESSAGE = DATETIME + "|" + err.message;
+    //       log.write("ERROR", LOGMESSAGE);
+    //       errors.push({
+    //         success: false,
+    //         msg: "Error when creating monitoring",
+    //         error: err
+    //       });
+    //     });
+    //   }
 
       if (req.body.resources.length > 0) {
-        let result = await taskUtilizedResourceModel.insertMany(req.body.resources, function (err, taskUtilizedResource) {
-          if (err) {
-            const LOGMESSAGE = DATETIME + "|" + err.message;
-            log.write("ERROR", LOGMESSAGE);
-            errors.push({ success: false, msg: "Error when creating taskUtilizedResource", error: err });
-          }
+        await taskUtilizedResourceModel.insertMany(req.body.resources).then(result => {
+          data.push({ success: true, msg: "taskUtilizedResource is created", data: result });
           const LOGMESSAGE = DATETIME + "|taskUtilizedResource created";
           log.write("INFO", LOGMESSAGE);
-
           req.body.resources.forEach(resource => {
-            taskPlannedResourceModel.updateOne({_id: resource.taskPlannedResource},{ $inc: { costIncurred:  (resource.actualCostPerUnit * resource.quantity), quantityConsumed: resource.quantity}},function (err, DATA) {
-             
+            taskPlannedResourceModel.updateOne({ _id: resource.taskPlannedResource }, { $inc: { costIncurred: (resource.actualCostPerUnit * resource.quantity), quantityConsumed: resource.quantity } }, function (err, DATA) {
             });
           })
-        });
-
-        data.push({ success: true, msg: "taskUtilizedResource is created", data: result });
-
+        }).catch(err => {
+          const LOGMESSAGE = DATETIME + "|" + err.message;
+          log.write("ERROR", LOGMESSAGE);
+          errors.push({ success: false, msg: "Error when creating taskUtilizedResource", error: err });
+        })
       }
 
       if (req.body.BOQ.length > 0) {
-        let result = await taskUtilizedBOQModel.insertMany(req.body.BOQ, function (err, taskUtilizedBOQ) {
-          if (err) {
-            const LOGMESSAGE = DATETIME + "|" + err.message;
-            log.write("ERROR", LOGMESSAGE);
-            errors.push({ success: false, msg: "Error when creating taskUtilizedBOQ", error: err });
-          }
+        await taskUtilizedBOQModel.insertMany(req.body.BOQ).then(result => {
+          data.push({ success: true, msg: "taskUtilizedBOQ is created", data: result });
           const LOGMESSAGE = DATETIME + "|taskUtilizedBOQ created";
           log.write("INFO", LOGMESSAGE);
           req.body.BOQ.forEach(bq => {
-            taskPlannedResourceModel.updateOne({_id: bq.taskPlannedResource},{ $inc: { costIncurred:  (bq.actualCostPerUnit * bq.quantity), quantityConsumed: bq.quantity}},function (err, DATA) {
-              
+            taskPlannedResourceModel.updateOne({ _id: bq.taskPlannedResource }, { $inc: { costIncurred: (bq.actualCostPerUnit * bq.quantity), quantityConsumed: bq.quantity } }, function (err, DATA) {
+
             });
           })
-        });
+        }).catch(err => {
+          const LOGMESSAGE = DATETIME + "|" + err.message;
+          log.write("ERROR", LOGMESSAGE);
+          errors.push({ success: false, msg: "Error when creating taskUtilizedBOQ", error: err });
+        })
 
-        data.push({ success: true, msg: "taskUtilizedBOQ is created", data: result });
+
       }
 
       res.json(data);
