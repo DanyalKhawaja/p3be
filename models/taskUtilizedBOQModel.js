@@ -6,7 +6,7 @@ var taskUtilizedBOQSchema = new Schema({
 
   boqType: {
     type: String,
-    required: true
+    // required: true
   },
   top3: {
     type: Number,
@@ -14,7 +14,7 @@ var taskUtilizedBOQSchema = new Schema({
  },
   uom: {
     type: String,
-    required: true
+    // required: true
   }
 });
 

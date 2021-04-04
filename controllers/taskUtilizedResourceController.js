@@ -137,7 +137,7 @@ module.exports = {
     //       });
     //     });
     //   }
-
+console.log(req.body.resources);
       if (req.body.resources.length > 0) {
         await taskUtilizedResourceModel.insertMany(req.body.resources).then(result => {
           data.push({ success: true, msg: "taskUtilizedResource is created", data: result });

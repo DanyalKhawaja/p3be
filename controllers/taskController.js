@@ -15,7 +15,10 @@ const taskUtilizedResourceModel = require('../models/taskUtilizedResourceBaseMod
 const taskPlannedResourceModel = require('../models/taskPlannedResourceBaseModel');
 const log = require('../lib/logger');
 const programModel = require('../models/programModel');
-
+const endOfMonth = require('date-fns/endOfMonth');
+const addDays = require('date-fns/addDays');
+var startOfMonth = require('date-fns/startOfMonth');
+var addMonths =require('date-fns/addMonths');
 module.exports = {
   list: function (req, res) {
     try {
@@ -49,7 +52,7 @@ module.exports = {
     }
   },
 
-  showExecutionsPendingByProjectId: function (req, res) {
+  dueExecutionByProject: function (req, res) {
     try {
       const DATETIME = dateFormat(new Date(), 'yyyy-mm-dd HH:MM:ss');
       var id = req.params.id;
@@ -59,10 +62,8 @@ module.exports = {
           {
             project: id,
             actualStartDate: null,
-            $or: [
-              { $and: [{ plannedStartDate: { $lte: new Date() } }, { workPackage: true }] },
-              { workPackage: false }
-            ]
+            plannedStartDate: { $lte: new Date() },
+            workPackage: true
           },
           function (err, task) {
             if (err) respondWithError(res, err, 'Error when getting task.');
@@ -100,48 +101,21 @@ module.exports = {
       respondWithError(res, error, 'Error when getting task.');
     }
   },
-  showExecutedTasksByProjectId: function (req, res) {
+  openByProjectId: function (req, res) {
     try {
       const DATETIME = dateFormat(new Date(), 'yyyy-mm-dd HH:MM:ss');
       var id = req.params.id;
       let qq = {
         project: id,
-        plannedStartDate: {
-          $lte: new Date()
+        actualStartDate: {
+          $ne: null
         },
-        // actualStartDate: {
-        //   $ne: null
-        // },
-        // monitoringStatus: {
-        //   $nin: ['CLOSED', 'SYSTEM']
-        // },
+        monitoringStatus: {
+          $nin: ['CLOSED', 'SYSTEM']
+        },
         completed: { $ne: 100 },
         workPackage: true
       };
-
-      // $or: [
-      //   {
-      //     $and: [
-      //       {
-      //         actualStartDate: {
-      //           $ne: null
-      //         }
-      //       },
-      //       {
-      //         monitoringStatus: {
-      //           $nin: ['CLOSED', 'SYSTEM']
-      //         }
-      //       },
-      //       {
-      //         completed: { $ne: 100 }
-      //       }
-      //     ]
-      //   },
-      //   {
-      //     workPackage: false
-      //   }
-      // ]
-
 
       taskModel
         .find(qq, function (err, task) {
@@ -1857,9 +1831,91 @@ module.exports = {
     try {
       var project = ObjectId(req.params.id);
       let currentProject = { project };
+      let rootTask = await taskModel.findOne({ project, taskId: '0' }).lean();
+      
+      let allWPTasks = await taskModel
+        .find({ project, workPackage: true })
+        .populate('projectLocation', 'pathId')
+        .sort({ plannedStartDate: 1 })
+        .lean();
+        let weightageMap = allWPTasks.reduce((map, task) => {
+          map[task.taskId] = task.weightage;
+          return map;
+        }, {});
       let monitorings = await monitoringModel
         .find(currentProject)
         .populate('task', ['projectLocation', 'actualStartDate', 'actualEndDate']);
+        let monitoringsCost;
+
+        let monActBrk;
+
+      let firstExecutedTask = await taskModel
+      .findOne({ project, actualStartDate: { $ne: null }, workPackage: true })
+      .sort({ actualStartDate: 1 })
+      .lean();
+    let drows = await taskModel.find({
+      project,
+      workPackage: true,
+      completed: { $ne: 100 }
+    });
+    let completionDate = null;
+    if (drows.length == 0) {
+      drows = await taskModel.find({ project, workPackage: true }).sort({ plannedEndDate: -1 }).limit(1);
+      completionDate = drows[0].actualEndDate;
+    }
+
+  
+    let tasks = allWPTasks;
+    let prev=null;
+
+    let monthList = createMonthlyArray(new Date(allWPTasks[0].plannedEndDate));
+
+    let monPlnBrk = allWPTasks.reduce(
+      (map, task) => {
+        let monthID0 = startOfMonth(new Date(task.plannedStartDate));
+        let ad = new Date(task.plannedEndDate);
+        let monthID = startOfMonth(ad);
+        let nextMonth = addMonths(monthID0,1);
+        let months = [monthID0]
+        if (!map.monthly[monthID0]){
+          map.monthly[monthID0] = {
+            plannedCost: 0,
+            plannedCompletion: 0,
+            cumPlnCost: 0,
+            cumPlnComp: 0,
+            cumPlnVal: 0
+          };
+        }
+          
+        while(nextMonth <= ad){
+          months.push(nextMonth);
+          if (!map.monthly[nextMonth]) {
+            map.monthly[nextMonth] = {
+              plannedCost: 0,
+              plannedCompletion: 0,
+              cumPlnCost: 0,
+              cumPlnComp: 0,
+              cumPlnVal: 0
+            };
+          }
+        
+          nextMonth = addMonths(nextMonth,1);
+        }
+        console.dir(map.monthly);
+        
+        map.monthly[monthID].plannedCost = map.monthly[monthID].plannedCost + task.plannedCost;
+        map.monthly[monthID].plannedCompletion =
+          map.monthly[monthID].plannedCompletion + weightageMap[task.taskId];
+        map.budAtComp = map.budAtComp + task.plannedCost;
+        return map;
+      },
+      { budAtComp: 0, monthly: {} }
+    );
+
+    let lastMonitoredMonth;
+     
+      let firstD = null;
+    if(monitorings.length >0){
       let query = [
         { $sort: { lastMonitoringDate: 1 } },
         { $match: currentProject },
@@ -1872,60 +1928,14 @@ module.exports = {
           }
         }
       ];
-      let monitoringsCost = await monitoringModel.aggregate(query);
-      let rootTask = await taskModel.findOne({ project, taskId: '0' }).lean();
-      let firstExecutedTask = await taskModel
-        .findOne({ project, actualStartDate: { $ne: null }, workPackage: true })
-        .sort({ actualStartDate: 1 })
-        .lean();
-      let drows = await taskModel.find({
-        project,
-        workPackage: true,
-        completed: { $ne: 100 }
-      });
-      let completionDate = null;
-      if (drows.length == 0) {
-        drows = await taskModel.find({ project, workPackage: true }).sort({ plannedEndDate: -1 }).limit(1);
-        completionDate = drows[0].actualEndDate;
-      }
+      monitoringsCost = await monitoringModel.aggregate(query);
 
-      let allWPTasks = await taskModel
-        .find({ project, workPackage: true })
-        .populate('projectLocation', 'pathId')
-        .sort({ plannedStartDate: 1 })
-        .lean();
+      
 
-      //, plannedEndDate: { $lte: new Date() }
-      let weightageMap = allWPTasks.reduce((map, task) => {
-        map[task.taskId] = task.weightage;
-        return map;
-      }, {});
-      let tasks = allWPTasks;
-      let monPlnBrk = allWPTasks.reduce(
-        (map, task) => {
-          let plannedEndDate = new Date(task.plannedEndDate);
-          let monthID = getFirstDate(plannedEndDate);
-          if (!map.monthly[monthID])
-            map.monthly[monthID] = {
-              plannedCost: 0,
-              plannedCompletion: 0,
-              cumPlnCost: 0,
-              cumPlnComp: 0,
-              cumPlnVal: 0
-            };
-          map.monthly[monthID].plannedCost = map.monthly[monthID].plannedCost + task.plannedCost;
-          map.monthly[monthID].plannedCompletion =
-            map.monthly[monthID].plannedCompletion + weightageMap[task.taskId];
-          map.budAtComp = map.budAtComp + task.plannedCost;
-          return map;
-        },
-        { budAtComp: 0, monthly: {} }
-      );
-
-      let monActBrk = monitoringsCost.reduce(
+      monActBrk = monitoringsCost.reduce(
         (map, task) => {
           let monthID = getFirstDate(new Date(task.lastMonitoringDate));
-          if (!map.monthly[monthID] && task.completion == 100)
+          if (!map.monthly[monthID] )
             map.monthly[monthID] = {
               actualCost: 0,
               actualCompletion: 0,
@@ -1934,12 +1944,12 @@ module.exports = {
               cumEarVal: 0
             };
 
-          if (task.completion == 100) {
+          // if (task.completion == 100) {
             map.totalActualCost += task.actualCost;
             map.totalActualCompletion += weightageMap[task._id];
             map.monthly[monthID].actualCost += task.actualCost;
             map.monthly[monthID].actualCompletion += weightageMap[task._id];
-          }
+          // }
           return map;
         },
         {
@@ -1949,10 +1959,8 @@ module.exports = {
         }
       );
 
-      // map[monthID].cumActCost = map.totalActualCost;
-      // map[monthID].cumulativeActualCompletion = map.totalActualCompletion;
-      let prev = null;
-      let firstD = null;
+
+      
 
       Object.keys(monActBrk.monthly).sort((a, b) => new Date(a) - new Date(b)).forEach((key) => {
         if (!firstD) firstD = key;
@@ -1966,13 +1974,19 @@ module.exports = {
           monActBrk.monthly[key].cumulativeActualCompletion * monPlnBrk.budAtComp;
         prev = key;
       });
-      let lastMonitoredMonth = prev;
+       lastMonitoredMonth = prev;
       prev = null;
-      let EVMValuesPerMonth = [];
-      //let D = [monActBrk.monthly[firstD] ? monActBrk.monthly[firstD].cumActCost : 0];
-      let D = [_.get(monActBrk, `mon.${firstD}.cumActCost`, 0)];
-      let A = [D[0]],
-        T = [0];
+
+      
+     
+    }
+    let D = [_.get(monActBrk, `mon.${firstD}.cumActCost`, 0)];
+    let A = [D[0]],
+      T = [0];
+
+    let EVMValuesPerMonth = [];
+
+     
       Object.keys(monPlnBrk.monthly).sort((a, b) => new Date(a) - new Date(b)).forEach((key, t) => {
         // monPlnBrk.monthly[key].cumPlnCost = (prev ? monPlnBrk.monthly[prev].cumPlnCost : 0) + monPlnBrk.monthly[key].plannedCost;
         monPlnBrk.monthly[key].cumPlnCost =
@@ -1986,31 +2000,45 @@ module.exports = {
           ] +
           '-' +
           new Date(key).getFullYear();
-        D.push(monActBrk.monthly[key] ? monActBrk.monthly[key].cumActCost : 0);
-        EVMValuesPerMonth.push({
-          RecordDate: month,
-          LastMonitoring: lastMonitoredMonth == key,
-          PV: monPlnBrk.monthly[key].cumPlnVal,
-          AC: _.get(monActBrk, `monthly.${key}.cumActCost`, 0),
-          EV: _.get(monActBrk, `monthly.${key}.cumEarVal`, 0),
-          FV: t > 0 ? EVMValuesPerMonth[t - 1].FV + getFt(t, D, A, T) : 0
-          // FV: monPlnBrk.monthly[key].cumPlnVal * 1.05
-        });
+          if(monitorings.length >0){
+            D.push(monActBrk.monthly[key] ? monActBrk.monthly[key].cumActCost : 0);
+            EVMValuesPerMonth.push({
+              RecordDate: month,
+              LastMonitoring: lastMonitoredMonth == key,
+              PV: monPlnBrk.monthly[key].cumPlnVal,
+              AC: _.get(monActBrk, `monthly.${key}.cumActCost`, 0),
+              EV: _.get(monActBrk, `monthly.${key}.cumEarVal`, 0),
+              FV: t > 0 ? EVMValuesPerMonth[t - 1].FV + getFt(t, D, A, T) : 0
+              // FV: monPlnBrk.monthly[key].cumPlnVal * 1.05
+            });
+          } else{
+          
+            EVMValuesPerMonth.push({
+              RecordDate: month,
+              LastMonitoring: false,
+              PV: monPlnBrk.monthly[key].cumPlnVal,
+              AC: 0,
+              EV:0,
+              FV:  0
+              // FV: monPlnBrk.monthly[key].cumPlnVal * 1.05
+            });
+          }
+       
         prev = key;
       });
 
-      let lastPlannedMonth = prev;
-      // lastMonitoredMonth = prev;
-      //  lastMonitoredMonth = (new Date('2020-05-01')).toString();
+      lastPlannedMonth = prev;
       let budAtComp = monPlnBrk.budAtComp;
-      // let plannedValue =monPlnBrk.monthly[lastMonitoredMonth].cumPlnVal ? monPlnBrk.monthly[lastMonitoredMonth].cumPlnVal:0;
-      // let earnedValue = monActBrk.monthly[lastMonitoredMonth] ? monActBrk.monthly[lastMonitoredMonth].cumEarVal : 0;
-      // let actualCost = monActBrk.monthly[lastMonitoredMonth] ? monActBrk.monthly[lastMonitoredMonth].cumActCost : 0;
-
       let plannedValue = _.get(monPlnBrk, `monthly.${lastPlannedMonth}.cumPlnVal`, 0);
-      let earnedValue = _.get(monActBrk, `monthly.${lastMonitoredMonth}.cumEarVal`, 0);
-      let actualCost = _.get(monActBrk, `monthly.${lastMonitoredMonth}.cumActCost`, 0);
-      let actualCostNonCumulative = _.get(monActBrk, `monthly.${lastMonitoredMonth}.actualCost`, 0);
+      let earnedValue = 0;
+      let actualCost = 0;
+      let actualCostNonCumulative=0;
+      if(lastMonitoredMonth){
+         earnedValue = lastMonitoredMonth ? _.get(monActBrk, `monthly.${lastMonitoredMonth}.cumEarVal`, 0):0;
+         actualCost = lastMonitoredMonth ? _.get(monActBrk, `monthly.${lastMonitoredMonth}.cumActCost`, 0):0;
+         actualCostNonCumulative = lastMonitoredMonth ? _.get(monActBrk, `monthly.${lastMonitoredMonth}.actualCost`, 0):0;
+      }
+      
 
       let costVariance = earnedValue - actualCost;
       let scheduleVariance = earnedValue - plannedValue;
@@ -2230,6 +2258,7 @@ module.exports = {
       utilizedResources.forEach((row) => {
         consumableMaterialBreakup[row._id.task][row._id.rankId].Actual = { qty: row.qty, total: row.total };
       });
+      console.log(EVMValuesPerMonth)
       let data = {
         monitorings,
         estimateAtCompletion,
@@ -2539,6 +2568,21 @@ module.exports = {
     } catch (error) {
       respondWithError(res, error, 'Error when getting task.');
     }
+  },
+  start: function (req, res) {
+    const DATETIME = dateFormat(new Date(), 'yyyy-mm-dd HH:MM:ss');
+    var { updatedStatus } = req.body;
+    taskModel.findByIdAndUpdate(updatedStatus._id, { actualStartDate: updatedStatus.actualStartDate }).then(({ _doc }) => {
+      res.status(200).json(_doc);
+    }).catch(error => {
+      const LOGMESSAGE = DATETIME + "|" + error.message;
+      log.write("ERROR", LOGMESSAGE);
+      return res.status(500).json({
+        success: false,
+        msg: "Error when getting task",
+        error: error,
+      });
+    });
   },
   updateStatus: function (req, res) {
     const DATETIME = dateFormat(new Date(), 'yyyy-mm-dd HH:MM:ss');

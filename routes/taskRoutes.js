@@ -28,6 +28,7 @@ router.post("/wbs", taskController.wbs);
 router.put("/wbs", taskController.updateWorkPackages);
 
 router.put("/updateStatus", taskController.updateStatus);
+router.put("/start", taskController.start);
 
 /*
  * GET Task By ID
@@ -38,9 +39,9 @@ router.get("/byTaskIdAndProjectId/:id/:projectId", taskController.show);
  * GET Username By ID
  */
 router.get("/byProject/:id", taskController.showTaskByProjectId);
-router.get("/executionsPendingbyProject/:id", taskController.showExecutionsPendingByProjectId);
+router.get("/dueExecutionByProject/:id", taskController.dueExecutionByProject);
 router.get("/wptasksByProject/:id", taskController.dashboardByProjectId);
-router.get("/executedTasksbyProject/:id", taskController.showExecutedTasksByProjectId);
+router.get("/openByProjectId/:id", taskController.openByProjectId);
 router.put("/cron/:id", taskController.markMonitorings);
 router.get("/dashboardByProgram/:id", taskController.dashboardByProgramId);
 router.get("/dashboardByPortfolio/:id", taskController.dashboardByPortfolioId);

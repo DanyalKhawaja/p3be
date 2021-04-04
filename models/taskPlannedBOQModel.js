@@ -6,7 +6,7 @@ var taskPlannedBOQSchema = new schema({
   
    boqType: {
       type: String,
-      required: true
+      // required: true
    },
    top3: {
       type: Number,
@@ -14,7 +14,7 @@ var taskPlannedBOQSchema = new schema({
    },
    uom: {
       type: String,
-      required: true
+      // required: true
    }
 });
 

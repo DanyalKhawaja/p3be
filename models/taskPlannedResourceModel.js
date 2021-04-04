@@ -6,12 +6,12 @@ var taskPlannedResourceSchema = new schema({
    resource: {
       type: mongoose.Schema.ObjectId,
       ref: "Resource",
-      required: true
+      // required: true
    },
    resourceType: {
       type: mongoose.Schema.ObjectId,
       ref: "ResourceType",
-      required: true
+      // required: true
    },
    external: {
      type: Boolean,
@@ -19,11 +19,11 @@ var taskPlannedResourceSchema = new schema({
    },
    plannedStartDate: {
       type: Date,
-      required: true
+      // required: true
    },
    plannedEndDate: {
       type: Date,
-      required: true
+      // required: true
    },
    projectLocation: {
       type: mongoose.Schema.ObjectId,
