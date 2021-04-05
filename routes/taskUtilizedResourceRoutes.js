@@ -13,7 +13,7 @@ router.get("/", taskUtilizedResourceController.list);
  * GET TRU by task id and projet id
  */
 router.get("/byProjectIdAndTaskId/:id/:taskId", taskUtilizedResourceController.show);
-
+router.get("/byProject/:projectId/", taskUtilizedResourceController.showByProject);
 /*
  * PUT
  */

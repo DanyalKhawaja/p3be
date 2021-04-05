@@ -39,6 +39,7 @@ router.delete("/:id", monitoringController.remove);
  * GET Username By ID
  */
 router.get("/monitoringByTaskId/:id", monitoringController.showMonitoringByTaskId);
+router.get("/byProject/:id", monitoringController.showMonitoringByProjectId);
 
 /*
  * GET Username By ID

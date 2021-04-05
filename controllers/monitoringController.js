@@ -149,8 +149,44 @@ module.exports = {
       });
     }
   },
-
-
+  
+  showMonitoringByProjectId: function (req, res) {
+    try {
+      const DATETIME = dateFormat(new Date(), "yyyy-mm-dd HH:MM:ss");
+      var id = req.params.id;
+      monitoringModel.find({ project: id }, function (err, monitoring) {
+        if (err) {
+          const LOGMESSAGE = DATETIME + "|" + err.message;
+          log.write("ERROR", LOGMESSAGE);
+          return res.status(500).json({
+            success: false,
+            msg: "Error when getting monitoring.",
+            error: err
+          });
+        }
+        if (!monitoring) {
+          const LOGMESSAGE = DATETIME + "|NO Such monitoring of project:" + id;
+          log.write("ERROR", LOGMESSAGE);
+          return res.status(404).json({
+            success: false,
+            msg: "No such monitoring"
+          });
+        }
+        const LOGMESSAGE = DATETIME + "|monitoring found of project:" + id;
+        log.write("INFO", LOGMESSAGE);
+        return res.json({ success: true, data: monitoring });
+        // return res.json(monitoring);
+      }).populate('task');
+    } catch (error) {
+      const LOGMESSAGE = DATETIME + "|" + error.message;
+      log.write("ERROR", LOGMESSAGE);
+      return res.status(500).json({
+        success: false,
+        msg: "Error when getting monitoring.",
+        error: error
+      });
+    }
+  },
 
   showCompletedTask: function (req, res) {
     try {

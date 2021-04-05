@@ -1,4 +1,5 @@
 const dateFormat = require("dateformat");
+const ObjectId = require('mongoose').Types.ObjectId;
 
 const taskUtilizedResourceBaseModel = require("../models/taskUtilizedResourceBaseModel");
 const taskPlannedResourceModel = require("../models/taskPlannedResourceBaseModel");
@@ -78,11 +79,13 @@ module.exports = {
     }
 
   },
-  showTaskByProjectId: function (req, res) {
+  showByProject: function (req, res) {
+    const DATETIME = dateFormat(new Date(), "yyyy-mm-dd HH:MM:ss");
     try {
-      const DATETIME = dateFormat(new Date(), "yyyy-mm-dd HH:MM:ss");
-      var id = req.params.id;
-      taskUtilizedResourceModel.findOne({ project: id }, function (err, taskUtilizedResource) {
+     
+      var {projectId} = req.params;
+      taskUtilizedResourceBaseModel.find({}, function (err, taskUtilizedResource) {
+        console.log(taskUtilizedResource)
         if (err) {
           const LOGMESSAGE = DATETIME + "|" + err.message;
           log.write("ERROR", LOGMESSAGE);
@@ -93,14 +96,14 @@ module.exports = {
           });
         }
         if (!taskUtilizedResource) {
-          const LOGMESSAGE = DATETIME + "|NO Such taskUtilizedResource of project:" + id;
+          const LOGMESSAGE = DATETIME + "|NO Such taskUtilizedResource of project:" + projectId;
           log.write("ERROR", LOGMESSAGE);
           return res.status(404).json({
             success: false,
             msg: "No such taskUtilizedResource"
           });
         }
-        const LOGMESSAGE = DATETIME + "|taskUtilizedResource found of project:" + id;
+        const LOGMESSAGE = DATETIME + "|taskUtilizedResource found of project:" + projectId;
         log.write("INFO", LOGMESSAGE);
         return res.json({ success: true, data: taskUtilizedResource });
         // return res.json(taskUtilizedResource);

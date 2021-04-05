@@ -18,7 +18,7 @@ const programModel = require('../models/programModel');
 const endOfMonth = require('date-fns/endOfMonth');
 const addDays = require('date-fns/addDays');
 var startOfMonth = require('date-fns/startOfMonth');
-var addMonths =require('date-fns/addMonths');
+var addMonths = require('date-fns/addMonths');
 module.exports = {
   list: function (req, res) {
     try {
@@ -349,16 +349,25 @@ module.exports = {
       }
       ]);
 
-      let programSchedule = projectsSchedule.reduce((obj, row, i, array) => {
-        if (!obj[programId]) obj[programId] = { programActualDays: 0, programPlannedDays: 0 };
-        let actualWeekDays = parseInt((row.projectActualDays / 7) * 2)
-        let plannedWeekDays = parseInt((row.projectPlannedDays / 7) * 2);
-        obj[programId].programActualDays += row.projectActualDays - actualWeekDays;
-        obj[programId].programPlannedDays += row.projectPlannedDays - plannedWeekDays;
-        array[i].projectActualDays = row.projectActualDays - actualWeekDays;
-        array[i].projectPlannedDays = row.projectPlannedDays - plannedWeekDays;
-        return obj;
-      }, {});
+      let programData = await programModel.findById(programId);
+      let programSchedule = {
+        [programId]: {
+          programActualDays: businessDays(new Date(programData.startDate), new Date()),
+          programPlannedDays: businessDays(new Date(programData.startDate), new Date(programData.endDate))
+        }
+      }
+
+      console.log(new Date(), programSchedule)
+      // let programSchedule = projectsSchedule.reduce((obj, row, i, array) => {
+      //   if (!obj[programId]) obj[programId] = { programActualDays: 0, programPlannedDays: 0 };
+      //   let actualWeekDays = parseInt((row.projectActualDays / 7) * 2)
+      //   let plannedWeekDays = parseInt((row.projectPlannedDays / 7) * 2);
+      //   obj[programId].programActualDays += row.projectActualDays - actualWeekDays;
+      //   obj[programId].programPlannedDays += row.projectPlannedDays - plannedWeekDays;
+      //   array[i].projectActualDays = row.projectActualDays - actualWeekDays;
+      //   array[i].projectPlannedDays = row.projectPlannedDays - plannedWeekDays;
+      //   return obj;
+      // }, {});
 
       projectsSchedule = projectsSchedule.reduce((obj, row) => {
         if (!obj[row._id]) obj[row._id] = {};
@@ -408,7 +417,7 @@ module.exports = {
         doc.cumulativePlannedCost = previous ? doc.plannedCost + previous.cumulativePlannedCost : doc.plannedCost;
         doc.cumulativePlannedCompletion = previous ? doc.plannedCompletion + previous.cumulativePlannedCompletion : doc.plannedCompletion;
         doc.cumulativeActualCompletion = previous ? doc.actualCompletion + previous.cumulativeActualCompletion : doc.actualCompletion;
-        doc.cumulativeActualCost = previous ? doc.actualCost + previous.cumulativeActualCost : doc.actualCost || 0;
+        doc.cumulativeActualCost = previous ? (doc.actualCost || 0) + previous.cumulativeActualCost : doc.actualCost || 0;
       });
       monthwiseData.forEach((doc, i, docs) => {
         let previous = docs[i - 1], final = docs[docs.length - 1];
@@ -472,6 +481,7 @@ module.exports = {
       };
       return res.json({ success: true, data: data });
     } catch (error) {
+      console.log(error)
       respondWithError(res, error, 'Error when getting task.');
     }
   },
@@ -1832,65 +1842,53 @@ module.exports = {
       var project = ObjectId(req.params.id);
       let currentProject = { project };
       let rootTask = await taskModel.findOne({ project, taskId: '0' }).lean();
-      
+
       let allWPTasks = await taskModel
         .find({ project, workPackage: true })
         .populate('projectLocation', 'pathId')
         .sort({ plannedStartDate: 1 })
         .lean();
-        let weightageMap = allWPTasks.reduce((map, task) => {
-          map[task.taskId] = task.weightage;
-          return map;
-        }, {});
+      let weightageMap = allWPTasks.reduce((map, task) => {
+        map[task.taskId] = task.weightage;
+        return map;
+      }, {});
       let monitorings = await monitoringModel
         .find(currentProject)
         .populate('task', ['projectLocation', 'actualStartDate', 'actualEndDate']);
-        let monitoringsCost;
+      let monitoringsCost;
 
-        let monActBrk;
+      let monActBrk;
 
       let firstExecutedTask = await taskModel
-      .findOne({ project, actualStartDate: { $ne: null }, workPackage: true })
-      .sort({ actualStartDate: 1 })
-      .lean();
-    let drows = await taskModel.find({
-      project,
-      workPackage: true,
-      completed: { $ne: 100 }
-    });
-    let completionDate = null;
-    if (drows.length == 0) {
-      drows = await taskModel.find({ project, workPackage: true }).sort({ plannedEndDate: -1 }).limit(1);
-      completionDate = drows[0].actualEndDate;
-    }
+        .findOne({ project, actualStartDate: { $ne: null }, workPackage: true })
+        .sort({ actualStartDate: 1 })
+        .lean();
+      let drows = await taskModel.find({
+        project,
+        workPackage: true,
+        completed: { $ne: 100 }
+      });
+      let completionDate = null;
+      if (drows.length == 0) {
+        drows = await taskModel.find({ project, workPackage: true }).sort({ plannedEndDate: -1 }).limit(1);
+        completionDate = drows[0].actualEndDate;
+      }
 
-  
-    let tasks = allWPTasks;
-    let prev=null;
 
-    let monthList = createMonthlyArray(new Date(allWPTasks[0].plannedEndDate));
+      let tasks = allWPTasks;
+      let prev = null;
 
-    let monPlnBrk = allWPTasks.reduce(
-      (map, task) => {
-        let monthID0 = startOfMonth(new Date(task.plannedStartDate));
-        let ad = new Date(task.plannedEndDate);
-        let monthID = startOfMonth(ad);
-        let nextMonth = addMonths(monthID0,1);
-        let months = [monthID0]
-        if (!map.monthly[monthID0]){
-          map.monthly[monthID0] = {
-            plannedCost: 0,
-            plannedCompletion: 0,
-            cumPlnCost: 0,
-            cumPlnComp: 0,
-            cumPlnVal: 0
-          };
-        }
-          
-        while(nextMonth <= ad){
-          months.push(nextMonth);
-          if (!map.monthly[nextMonth]) {
-            map.monthly[nextMonth] = {
+      let monthList = createMonthlyArray(new Date(allWPTasks[0].plannedEndDate));
+
+      let monPlnBrk = allWPTasks.reduce(
+        (map, task) => {
+          let monthID0 = startOfMonth(new Date(task.plannedStartDate));
+          let ad = new Date(task.plannedEndDate);
+          let monthID = startOfMonth(ad);
+          let nextMonth = addMonths(monthID0, 1);
+          let months = [monthID0]
+          if (!map.monthly[monthID0]) {
+            map.monthly[monthID0] = {
               plannedCost: 0,
               plannedCompletion: 0,
               cumPlnCost: 0,
@@ -1898,95 +1896,107 @@ module.exports = {
               cumPlnVal: 0
             };
           }
-        
-          nextMonth = addMonths(nextMonth,1);
-        }
-        console.dir(map.monthly);
-        
-        map.monthly[monthID].plannedCost = map.monthly[monthID].plannedCost + task.plannedCost;
-        map.monthly[monthID].plannedCompletion =
-          map.monthly[monthID].plannedCompletion + weightageMap[task.taskId];
-        map.budAtComp = map.budAtComp + task.plannedCost;
-        return map;
-      },
-      { budAtComp: 0, monthly: {} }
-    );
 
-    let lastMonitoredMonth;
-     
-      let firstD = null;
-    if(monitorings.length >0){
-      let query = [
-        { $sort: { lastMonitoringDate: 1 } },
-        { $match: currentProject },
-        {
-          $group: {
-            _id: '$taskId',
-            actualCost: { $sum: '$actualCost' },
-            completion: { $last: '$completion' },
-            lastMonitoringDate: { $last: '$monitoringDate' }
+          while (nextMonth <= ad) {
+            months.push(nextMonth);
+            if (!map.monthly[nextMonth]) {
+              map.monthly[nextMonth] = {
+                plannedCost: 0,
+                plannedCompletion: 0,
+                cumPlnCost: 0,
+                cumPlnComp: 0,
+                cumPlnVal: 0
+              };
+            }
+
+            nextMonth = addMonths(nextMonth, 1);
           }
-        }
-      ];
-      monitoringsCost = await monitoringModel.aggregate(query);
+          console.dir(map.monthly);
 
-      
+          map.monthly[monthID].plannedCost = map.monthly[monthID].plannedCost + task.plannedCost;
+          map.monthly[monthID].plannedCompletion =
+            map.monthly[monthID].plannedCompletion + weightageMap[task.taskId];
+          map.budAtComp = map.budAtComp + task.plannedCost;
+          return map;
+        },
+        { budAtComp: 0, monthly: {} }
+      );
 
-      monActBrk = monitoringsCost.reduce(
-        (map, task) => {
-          let monthID = getFirstDate(new Date(task.lastMonitoringDate));
-          if (!map.monthly[monthID] )
-            map.monthly[monthID] = {
-              actualCost: 0,
-              actualCompletion: 0,
-              cumActCost: 0,
-              cumulativeActualCompletion: 0,
-              cumEarVal: 0
-            };
+      let lastMonitoredMonth;
 
-          // if (task.completion == 100) {
+      let firstD = null;
+      if (monitorings.length > 0) {
+        let query = [
+          { $sort: { lastMonitoringDate: 1 } },
+          { $match: currentProject },
+          {
+            $group: {
+              _id: '$taskId',
+              actualCost: { $sum: '$actualCost' },
+              completion: { $last: '$completion' },
+              lastMonitoringDate: { $last: '$monitoringDate' }
+            }
+          }
+        ];
+        monitoringsCost = await monitoringModel.aggregate(query);
+
+
+
+        monActBrk = monitoringsCost.reduce(
+          (map, task) => {
+            let monthID = getFirstDate(new Date(task.lastMonitoringDate));
+            if (!map.monthly[monthID])
+              map.monthly[monthID] = {
+                actualCost: 0,
+                actualCompletion: 0,
+                cumActCost: 0,
+                cumulativeActualCompletion: 0,
+                cumEarVal: 0
+              };
+
+            // if (task.completion == 100) {
             map.totalActualCost += task.actualCost;
             map.totalActualCompletion += weightageMap[task._id];
             map.monthly[monthID].actualCost += task.actualCost;
             map.monthly[monthID].actualCompletion += weightageMap[task._id];
-          // }
-          return map;
-        },
-        {
-          totalActualCost: 0,
-          totalActualCompletion: 0,
-          monthly: {}
-        }
-      );
+            // }
+            return map;
+          },
+          {
+            totalActualCost: 0,
+            totalActualCompletion: 0,
+            monthly: {}
+          }
+        );
 
 
-      
 
-      Object.keys(monActBrk.monthly).sort((a, b) => new Date(a) - new Date(b)).forEach((key) => {
-        if (!firstD) firstD = key;
-        // monActBrk.monthly[key].cumActCost = (prev ? monActBrk.monthly[prev].cumActCost : 0) + monActBrk.monthly[key].actualCost;
-        monActBrk.monthly[key].cumActCost =
-          _.get(monActBrk, `monthly.${prev}.cumActCost`, 0) + monActBrk.monthly[key].actualCost;
-        monActBrk.monthly[key].cumulativeActualCompletion =
-          _.get(monActBrk, `monthly.${prev}.cumulativeActualCompletion`, 0) +
-          monActBrk.monthly[key].actualCompletion;
-        monActBrk.monthly[key].cumEarVal =
-          monActBrk.monthly[key].cumulativeActualCompletion * monPlnBrk.budAtComp;
-        prev = key;
-      });
-       lastMonitoredMonth = prev;
-      prev = null;
 
-      
-     
-    }
-    let D = [_.get(monActBrk, `mon.${firstD}.cumActCost`, 0)];
-    let A = [D[0]],
-      T = [0];
+        Object.keys(monActBrk.monthly).sort((a, b) => new Date(a) - new Date(b)).forEach((key) => {
+          if (!firstD) firstD = key;
+          // monActBrk.monthly[key].cumActCost = (prev ? monActBrk.monthly[prev].cumActCost : 0) + monActBrk.monthly[key].actualCost;
+          monActBrk.monthly[key].cumActCost =
+            _.get(monActBrk, `monthly.${prev}.cumActCost`, 0) + monActBrk.monthly[key].actualCost;
+          monActBrk.monthly[key].cumulativeActualCompletion =
+            _.get(monActBrk, `monthly.${prev}.cumulativeActualCompletion`, 0) +
+            monActBrk.monthly[key].actualCompletion;
+          monActBrk.monthly[key].cumEarVal =
+            monActBrk.monthly[key].cumulativeActualCompletion * monPlnBrk.budAtComp;
+          prev = key;
+        });
+        lastMonitoredMonth = prev;
+        prev = null;
 
-    let EVMValuesPerMonth = [];
 
-     
+
+      }
+      let D = [_.get(monActBrk, `mon.${firstD}.cumActCost`, 0)];
+      let A = [D[0]],
+        T = [0];
+
+      let EVMValuesPerMonth = [];
+
+
       Object.keys(monPlnBrk.monthly).sort((a, b) => new Date(a) - new Date(b)).forEach((key, t) => {
         // monPlnBrk.monthly[key].cumPlnCost = (prev ? monPlnBrk.monthly[prev].cumPlnCost : 0) + monPlnBrk.monthly[key].plannedCost;
         monPlnBrk.monthly[key].cumPlnCost =
@@ -2000,30 +2010,30 @@ module.exports = {
           ] +
           '-' +
           new Date(key).getFullYear();
-          if(monitorings.length >0){
-            D.push(monActBrk.monthly[key] ? monActBrk.monthly[key].cumActCost : 0);
-            EVMValuesPerMonth.push({
-              RecordDate: month,
-              LastMonitoring: lastMonitoredMonth == key,
-              PV: monPlnBrk.monthly[key].cumPlnVal,
-              AC: _.get(monActBrk, `monthly.${key}.cumActCost`, 0),
-              EV: _.get(monActBrk, `monthly.${key}.cumEarVal`, 0),
-              FV: t > 0 ? EVMValuesPerMonth[t - 1].FV + getFt(t, D, A, T) : 0
-              // FV: monPlnBrk.monthly[key].cumPlnVal * 1.05
-            });
-          } else{
-          
-            EVMValuesPerMonth.push({
-              RecordDate: month,
-              LastMonitoring: false,
-              PV: monPlnBrk.monthly[key].cumPlnVal,
-              AC: 0,
-              EV:0,
-              FV:  0
-              // FV: monPlnBrk.monthly[key].cumPlnVal * 1.05
-            });
-          }
-       
+        if (monitorings.length > 0) {
+          D.push(monActBrk.monthly[key] ? monActBrk.monthly[key].cumActCost : 0);
+          EVMValuesPerMonth.push({
+            RecordDate: month,
+            LastMonitoring: lastMonitoredMonth == key,
+            PV: monPlnBrk.monthly[key].cumPlnVal,
+            AC: _.get(monActBrk, `monthly.${key}.cumActCost`, 0),
+            EV: _.get(monActBrk, `monthly.${key}.cumEarVal`, 0),
+            FV: t > 0 ? EVMValuesPerMonth[t - 1].FV + getFt(t, D, A, T) : 0
+            // FV: monPlnBrk.monthly[key].cumPlnVal * 1.05
+          });
+        } else {
+
+          EVMValuesPerMonth.push({
+            RecordDate: month,
+            LastMonitoring: false,
+            PV: monPlnBrk.monthly[key].cumPlnVal,
+            AC: 0,
+            EV: 0,
+            FV: 0
+            // FV: monPlnBrk.monthly[key].cumPlnVal * 1.05
+          });
+        }
+
         prev = key;
       });
 
@@ -2032,13 +2042,13 @@ module.exports = {
       let plannedValue = _.get(monPlnBrk, `monthly.${lastPlannedMonth}.cumPlnVal`, 0);
       let earnedValue = 0;
       let actualCost = 0;
-      let actualCostNonCumulative=0;
-      if(lastMonitoredMonth){
-         earnedValue = lastMonitoredMonth ? _.get(monActBrk, `monthly.${lastMonitoredMonth}.cumEarVal`, 0):0;
-         actualCost = lastMonitoredMonth ? _.get(monActBrk, `monthly.${lastMonitoredMonth}.cumActCost`, 0):0;
-         actualCostNonCumulative = lastMonitoredMonth ? _.get(monActBrk, `monthly.${lastMonitoredMonth}.actualCost`, 0):0;
+      let actualCostNonCumulative = 0;
+      if (lastMonitoredMonth) {
+        earnedValue = lastMonitoredMonth ? _.get(monActBrk, `monthly.${lastMonitoredMonth}.cumEarVal`, 0) : 0;
+        actualCost = lastMonitoredMonth ? _.get(monActBrk, `monthly.${lastMonitoredMonth}.cumActCost`, 0) : 0;
+        actualCostNonCumulative = lastMonitoredMonth ? _.get(monActBrk, `monthly.${lastMonitoredMonth}.actualCost`, 0) : 0;
       }
-      
+
 
       let costVariance = earnedValue - actualCost;
       let scheduleVariance = earnedValue - plannedValue;
@@ -2258,7 +2268,7 @@ module.exports = {
       utilizedResources.forEach((row) => {
         consumableMaterialBreakup[row._id.task][row._id.rankId].Actual = { qty: row.qty, total: row.total };
       });
-      console.log(EVMValuesPerMonth)
+      // console.log(EVMValuesPerMonth)
       let data = {
         monitorings,
         estimateAtCompletion,
@@ -2325,7 +2335,7 @@ module.exports = {
     try {
       const DATETIME = dateFormat(new Date(), 'yyyy-mm-dd HH:MM:ss');
       var id = req.params.projectId;
-      console.log(id);
+      // console.log(id);
       taskModel.aggregate(
         [
           {
