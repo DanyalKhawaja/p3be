@@ -201,7 +201,7 @@ module.exports = {
             const LOGMESSAGE = DATETIME + "|taskPlannedBOQ created";
             log.write("INFO", LOGMESSAGE);
             // return res.status(201).json(taskPlannedResource);
-            
+
           });
         }
         return res.json({ success: true, msg: "WBS saved", data: null });
@@ -294,7 +294,56 @@ module.exports = {
       return res.status(500).json({ success: false, msg: "Error when getting taskPlannedResource.", error: error });
     }
   },
+  updateStatus: async function (req, res) {
+    const DATETIME = dateFormat(new Date(), "yyyy-mm-dd HH:MM:ss");
+    // var id = req.params.id;
+    var tru = req.body;
+    let promises = [];
+    tru.BOQ.forEach((row) => {
+      let pr = new Promise(res => {
+        taskPlannedBOQModel.findByIdAndUpdate({ _id: row.tpr }, { $inc: { quantityConsumed: row.quantity, costIncurred: (row.actualCostPerUnit * row.quantity) } }, function (err, taskPlannedBOQ) {
+          if (err) {
+            const LOGMESSAGE = DATETIME + "|" + err.message;
+            log.write("ERROR", LOGMESSAGE);
+            return res.status(500).json({ success: false, msg: "Error when getting taskPlannedResource", error: err });
+          }
+          if (!taskPlannedBOQ) {
+            const LOGMESSAGE = DATETIME + "|No such taskPlannedResource to update:";
+            log.write("ERROR", LOGMESSAGE);
+            return res.status(404).json({ success: false, msg: "No such taskPlannedResource" });
+          }
+          res();
+        });
+      })
 
+      promises.push(pr);
+    });
+
+    tru.resources.forEach((row, index) => {
+      let pr = new Promise(res => {
+        taskPlannedResourceModel.findByIdAndUpdate({ _id: row.tpr }, { $inc: { quantityConsumed: row.quantity, costIncurred: (row.actualCostPerUnit * row.quantity) } }, function (err, taskPlannedResource) {
+          if (err) {
+            const LOGMESSAGE = DATETIME + "|" + err.message;
+            log.write("ERROR", LOGMESSAGE);
+            return res.status(500).json({ success: false, msg: "Error when getting taskPlannedResource", error: err });
+          }
+          if (!taskPlannedResource) {
+            const LOGMESSAGE = DATETIME + "|No such taskPlannedResource to update:";
+            log.write("ERROR", LOGMESSAGE);
+            return res.status(404).json({ success: false, msg: "No such taskPlannedResource" });
+          }
+          res();
+        });
+      });
+      promises.push(pr);
+    });
+
+
+    Promise.all(promises).then(() => {
+      return res.status(200).json({ success: true, msg: "Planned Resources Updated" });
+    }).catch(console.log);
+
+  },
   remove: function (req, res) {
     try {
       const DATETIME = dateFormat(new Date(), "yyyy-mm-dd HH:MM:ss");

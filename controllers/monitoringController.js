@@ -530,6 +530,7 @@ module.exports = {
           monitoring.actualEndDate = req.body.actualEndDate ? req.body.actualEndDate : monitoring.actualEndDate,
           monitoring.actualCost = req.body.actualCost ? req.body.actualCost : monitoring.actualCost,
           monitoring.completion = req.body.completion ? req.body.completion : monitoring.completion,
+          monitoring.completionVariance = req.body.completionVariance ? req.body.completionVariance : monitoring.completionVariance,
 
 
           monitoring.save(function (err, monitoring) {

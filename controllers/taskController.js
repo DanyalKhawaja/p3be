@@ -95,7 +95,7 @@ module.exports = {
           return res.json({ success: true, data: task });
           // return res.json(task);
         })
-        .sort({ taskId: 1 })
+        // .sort({ taskId: 1 })
         .populate('ProjectLocation', 'projectLocationName');
     } catch (error) {
       respondWithError(res, error, 'Error when getting task.');
@@ -126,7 +126,7 @@ module.exports = {
           return res.json({ success: true, data: task });
           // return res.json(task);
         })
-        .sort({ taskId: 1 })
+        .sort({ parentTask: 1,taskId: 1 })
         .populate('ProjectLocation', 'projectLocationName');
     } catch (error) {
       respondWithError(res, error, 'Error when getting task.');
@@ -140,8 +140,6 @@ module.exports = {
       var programId = program.toString();
       var projects = (await projectModel.find({ program }, { _id: 1 }).lean()).map((d) => d._id);
       let allProjects = await projectModel.find({ program }, { _id: 1, name: 1 }).lean();
-
-
       let actualResourceBreakup = (await taskUtilizedResourceModel.aggregate([{
         $match: {
           $and: [
@@ -357,18 +355,6 @@ module.exports = {
         }
       }
 
-      console.log(new Date(), programSchedule)
-      // let programSchedule = projectsSchedule.reduce((obj, row, i, array) => {
-      //   if (!obj[programId]) obj[programId] = { programActualDays: 0, programPlannedDays: 0 };
-      //   let actualWeekDays = parseInt((row.projectActualDays / 7) * 2)
-      //   let plannedWeekDays = parseInt((row.projectPlannedDays / 7) * 2);
-      //   obj[programId].programActualDays += row.projectActualDays - actualWeekDays;
-      //   obj[programId].programPlannedDays += row.projectPlannedDays - plannedWeekDays;
-      //   array[i].projectActualDays = row.projectActualDays - actualWeekDays;
-      //   array[i].projectPlannedDays = row.projectPlannedDays - plannedWeekDays;
-      //   return obj;
-      // }, {});
-
       projectsSchedule = projectsSchedule.reduce((obj, row) => {
         if (!obj[row._id]) obj[row._id] = {};
         obj[row._id].projectActualDays = row.projectActualDays;
@@ -411,18 +397,29 @@ module.exports = {
 
       let monthList = createMonthlyArray(monthwisePlanned[0].firstDate)
       let monthwiseData = _.values(_.merge(_.keyBy(monthList, '_id'), _.keyBy(monthwisePlanned, '_id'), _.keyBy(monthwiseActual, '_id')));
+      monthwiseData = monthwiseData.sort((a,b)=> new Date(a._id) < new Date(b._id) ? -1 : 1)
+      
       monthwiseData[monthwiseActual.length - 1].isLastMonitoring = true;
       monthwiseData.forEach((doc, i, docs) => {
+        if(!doc.plannedCost) doc.plannedCost =0;
+        if(!doc.plannedCompletion) doc.plannedCompletion =0;
+        if(!doc.cumulativePlannedCost) doc.cumulativePlannedCost =0;
+        if(!doc.actualCompletion) doc.actualCompletion=0;
+        if(!doc.cumulativeActualCompletion) doc.cumulativeActualCompletion =0;
         let previous = docs[i - 1];
         doc.cumulativePlannedCost = previous ? doc.plannedCost + previous.cumulativePlannedCost : doc.plannedCost;
-        doc.cumulativePlannedCompletion = previous ? doc.plannedCompletion + previous.cumulativePlannedCompletion : doc.plannedCompletion;
+        doc.cumulativePlannedCompletion = previous ? doc.plannedCompletion + previous.cumulativePlannedCompletion :doc.plannedCompletion;
         doc.cumulativeActualCompletion = previous ? doc.actualCompletion + previous.cumulativeActualCompletion : doc.actualCompletion;
-        doc.cumulativeActualCost = previous ? (doc.actualCost || 0) + previous.cumulativeActualCost : doc.actualCost || 0;
+        doc.cumulativeActualCost = previous ? (doc.actualCost ? doc.actualCost : 0) + previous.cumulativeActualCost : doc.actualCost;
       });
+      // console.log(monthwiseData)
       monthwiseData.forEach((doc, i, docs) => {
         let previous = docs[i - 1], final = docs[docs.length - 1];
-        doc.cumulativePlannedValue = previous ? previous.cumulativePlannedValue + (doc.plannedCompletion * final.cumulativePlannedCost) : doc.plannedCompletion * final.cumulativePlannedCost;
-        doc.cumulativeEarnedValue = previous ? previous.cumulativeEarnedValue + (doc.actualCompletion * final.cumulativePlannedCost) : doc.actualCompletion * final.cumulativePlannedCost;
+        if(!doc.cumulativePlannedValue) doc.cumulativePlannedValue =0;
+         if(!doc.cumulativeEarnedValue) doc.cumulativeEarnedValue =0;
+
+        doc.cumulativePlannedValue = previous ? previous.cumulativePlannedValue + (doc.plannedCompletion * final.cumulativePlannedCost) : doc.plannedCompletion * (final.cumulativePlannedCost ? final.cumulativePlannedCost : 0);
+        doc.cumulativeEarnedValue = previous ? previous.cumulativeEarnedValue + (doc.actualCompletion * final.cumulativePlannedCost) : doc.actualCompletion * (final.cumulativePlannedCost ? final.cumulativePlannedCost : 0);
       });
 
       let D = [], A = [monthwiseData[0].cumulativeActualCost], T = [0];
@@ -433,19 +430,26 @@ module.exports = {
         // 
       });
 
-
-      let actualCost = monthwiseData[monthwiseData.length - 1].cumulativeActualCost;
+      let currentMonthRow = monthwiseData.find(d =>{ 
+        let y= getFirstDate(new Date(d._id)).valueOf() == getFirstDate(new Date()).valueOf()
+        return y;
+      });
+    
+      let actualCost = currentMonthRow ? currentMonthRow.cumulativeActualCost :0;
+      let currentMonthActualCost = currentMonthRow ? currentMonthRow.actualCost :0;
+      let currentMonthPlannedCost = currentMonthRow ? currentMonthRow.plannedCost :0;
       let budAtComp = monthwiseData[monthwiseData.length - 1].cumulativePlannedCost;
       let averageMonthlyCost = budAtComp / monthwiseData.length;
+
       let totalPlannedDays = programSchedule[programId].programPlannedDays;
       let actualDaysSinceExecution = programSchedule[programId].programActualDays;
       let performanceData = {
         PerformanceCostData: {
-          ActualCost: actualCost, // actual cost for the current month
-          AverageMonthlyCost: averageMonthlyCost, // total cost divided by the total budget
-          PurpleRange: [0, averageMonthlyCost],
-          YellowRange: [averageMonthlyCost, averageMonthlyCost * 1.25],
-          RedRange: [averageMonthlyCost * 1.25, averageMonthlyCost * 1.5]
+          ActualCost: currentMonthActualCost, // actual cost for the current month
+          AverageMonthlyCost: currentMonthPlannedCost, // total cost divided by the total budget
+          PurpleRange: [0, currentMonthPlannedCost],
+          YellowRange: [currentMonthPlannedCost, currentMonthPlannedCost * 1.25],
+          RedRange: [currentMonthPlannedCost * 1.25, currentMonthPlannedCost * 1.5]
         },
         PerformanceBudgetData: {
           TotalEstimatedBudget: budAtComp, //sum of all PlannedCost for Level-1 tasks
@@ -569,7 +573,7 @@ module.exports = {
         obj[row._id.material] = row.total;
         return obj;
       }, {});
-
+      let programTotal = 0;
       let projectCostAndCompletion = (await taskModel.aggregate([
         { $sort: { plannedStartDate: 1 } },
         { $match: { project: { $in: projects }, workPackage: true } },
@@ -963,8 +967,14 @@ module.exports = {
 
       let monthList = createMonthlyArray(monthwisePlanned[0].firstDate)
       let monthwiseData = _.values(_.merge(_.keyBy(monthList, '_id'), _.keyBy(monthwisePlanned, '_id'), _.keyBy(monthwiseActual, '_id')));
+      monthwiseData = monthwiseData.sort((a,b)=> new Date(a._id) < new Date(b._id) ? -1 : 1)
       monthwiseData[monthwiseActual.length - 1].isLastMonitoring = true;
       monthwiseData.forEach((doc, i, docs) => {
+        if(!doc.plannedCost) doc.plannedCost =0;
+        if(!doc.plannedCompletion) doc.plannedCompletion =0;
+        if(!doc.cumulativePlannedCost) doc.cumulativePlannedCost =0;
+        if(!doc.actualCompletion) doc.actualCompletion=0;
+        if(!doc.cumulativeActualCompletion) doc.cumulativeActualCompletion =0;
         let previous = docs[i - 1];
         doc.cumulativePlannedCost = previous ? doc.plannedCost + previous.cumulativePlannedCost : doc.plannedCost;
         doc.cumulativePlannedCompletion = previous ? doc.plannedCompletion + previous.cumulativePlannedCompletion : doc.plannedCompletion;
@@ -973,8 +983,10 @@ module.exports = {
       });
       monthwiseData.forEach((doc, i, docs) => {
         let previous = docs[i - 1], final = docs[docs.length - 1];
-        doc.cumulativePlannedValue = previous ? previous.cumulativePlannedValue + (doc.plannedCompletion * final.cumulativePlannedCost) : doc.plannedCompletion * final.cumulativePlannedCost;
-        doc.cumulativeEarnedValue = previous ? previous.cumulativeEarnedValue + (doc.actualCompletion * final.cumulativePlannedCost) : doc.actualCompletion * final.cumulativePlannedCost;
+        if(!doc.cumulativePlannedValue) doc.cumulativePlannedValue =0;
+        if(!doc.cumulativeEarnedValue) doc.cumulativeEarnedValue =0;
+        doc.cumulativePlannedValue = previous ? previous.cumulativePlannedValue + (doc.plannedCompletion * final.cumulativePlannedCost) : doc.plannedCompletion * (final.cumulativePlannedCost ? final.cumulativePlannedCost : 0);
+        doc.cumulativeEarnedValue = previous ? previous.cumulativeEarnedValue + (doc.actualCompletion * final.cumulativePlannedCost) : doc.actualCompletion *(final.cumulativePlannedCost ? final.cumulativePlannedCost : 0);
       });
 
       let D = [], A = [monthwiseData[0].cumulativeActualCost], T = [0];
@@ -985,19 +997,29 @@ module.exports = {
         // 
       });
 
+      let currentMonthRow = monthwiseData.find(d =>{ 
+        let y= getFirstDate(new Date(d._id)).valueOf() == getFirstDate(new Date()).valueOf()
+        return y;
+      });
+    
+      let actualCost = currentMonthRow ? currentMonthRow.cumulativeActualCost :0;
+      let currentMonthActualCost = currentMonthRow ? currentMonthRow.actualCost :0;
+      let currentMonthplannedCost = currentMonthRow ? currentMonthRow.plannedCost :0;
+      
 
-      let actualCost = monthwiseData[monthwiseData.length - 1].cumulativeActualCost;
+
+
       let budAtComp = monthwiseData[monthwiseData.length - 1].cumulativePlannedCost;
       let averageMonthlyCost = budAtComp / monthwiseData.length;
       let totalPlannedDays = portfolioSchedule[portfolioId].portfolioPlannedDays;
       let actualDaysSinceExecution = portfolioSchedule[portfolioId].portfolioActualDays;
       let performanceData = {
         PerformanceCostData: {
-          ActualCost: actualCost, // actual cost for the current month
-          AverageMonthlyCost: averageMonthlyCost, // total cost divided by the total budget
-          PurpleRange: [0, averageMonthlyCost],
-          YellowRange: [averageMonthlyCost, averageMonthlyCost * 1.25],
-          RedRange: [averageMonthlyCost * 1.25, averageMonthlyCost * 1.5]
+          ActualCost: currentMonthActualCost, // actual cost for the current month
+          AverageMonthlyCost: currentMonthplannedCost, // total cost divided by the total budget
+          PurpleRange: [0, currentMonthplannedCost],
+          YellowRange: [currentMonthplannedCost, currentMonthplannedCost * 1.25],
+          RedRange: [currentMonthplannedCost * 1.25, currentMonthplannedCost * 1.5]
         },
         PerformanceBudgetData: {
           TotalEstimatedBudget: budAtComp, //sum of all PlannedCost for Level-1 tasks
@@ -1911,7 +1933,7 @@ module.exports = {
 
             nextMonth = addMonths(nextMonth, 1);
           }
-          console.dir(map.monthly);
+    
 
           map.monthly[monthID].plannedCost = map.monthly[monthID].plannedCost + task.plannedCost;
           map.monthly[monthID].plannedCompletion =
@@ -1932,19 +1954,24 @@ module.exports = {
           {
             $group: {
               _id: '$taskId',
-              actualCost: { $sum: '$actualCost' },
-              completion: { $last: '$completion' },
-              lastMonitoringDate: { $last: '$monitoringDate' }
+              actualCost: '$actualCost',
+              completion: '$completionVariance',
+              lastMonitoringDate: '$monitoringDate'
+              // actualCost: { $sum: '$actualCost' },
+              // completion: { $last: '$completion' },
+              // completionVariance:  
+              // lastMonitoringDate: { $last: '$monitoringDate' }
             }
           }
         ];
-        monitoringsCost = await monitoringModel.aggregate(query);
+         
+        monitoringsCost = await monitoringModel.find(currentProject).sort({ monitoringDate: 1 });
 
 
 
         monActBrk = monitoringsCost.reduce(
-          (map, task) => {
-            let monthID = getFirstDate(new Date(task.lastMonitoringDate));
+          (map, monitoring) => {
+            let monthID = getFirstDate(new Date(monitoring.monitoringDate));
             if (!map.monthly[monthID])
               map.monthly[monthID] = {
                 actualCost: 0,
@@ -1955,10 +1982,10 @@ module.exports = {
               };
 
             // if (task.completion == 100) {
-            map.totalActualCost += task.actualCost;
-            map.totalActualCompletion += weightageMap[task._id];
-            map.monthly[monthID].actualCost += task.actualCost;
-            map.monthly[monthID].actualCompletion += weightageMap[task._id];
+            map.totalActualCost += monitoring.actualCost;
+            map.totalActualCompletion += weightageMap[monitoring.taskId];
+            map.monthly[monthID].actualCost += monitoring.actualCost;
+            map.monthly[monthID].actualCompletion += weightageMap[monitoring.taskId]*(monitoring.completionVariance*0.01);
             // }
             return map;
           },
@@ -1970,8 +1997,6 @@ module.exports = {
         );
 
 
-
-
         Object.keys(monActBrk.monthly).sort((a, b) => new Date(a) - new Date(b)).forEach((key) => {
           if (!firstD) firstD = key;
           // monActBrk.monthly[key].cumActCost = (prev ? monActBrk.monthly[prev].cumActCost : 0) + monActBrk.monthly[key].actualCost;
@@ -1980,6 +2005,7 @@ module.exports = {
           monActBrk.monthly[key].cumulativeActualCompletion =
             _.get(monActBrk, `monthly.${prev}.cumulativeActualCompletion`, 0) +
             monActBrk.monthly[key].actualCompletion;
+          // monActBrk.monthly[key].cumulativeActualCompletion = monActBrk.monthly[key].actualCompletion;
           monActBrk.monthly[key].cumEarVal =
             monActBrk.monthly[key].cumulativeActualCompletion * monPlnBrk.budAtComp;
           prev = key;
@@ -1990,6 +2016,7 @@ module.exports = {
 
 
       }
+      console.log()
       let D = [_.get(monActBrk, `mon.${firstD}.cumActCost`, 0)];
       let A = [D[0]],
         T = [0];
@@ -2039,14 +2066,26 @@ module.exports = {
 
       lastPlannedMonth = prev;
       let budAtComp = monPlnBrk.budAtComp;
-      let plannedValue = _.get(monPlnBrk, `monthly.${lastPlannedMonth}.cumPlnVal`, 0);
+      
+      let plannedValue = _.get(monPlnBrk, `monthly.${lastMonitoredMonth}.cumPlnVal`, 0);
+      // let plannedValue = _.get(monPlnBrk, `monthly.${lastPlannedMonth}.cumPlnVal`, 0);
       let earnedValue = 0;
       let actualCost = 0;
-      let actualCostNonCumulative = 0;
+      let currentMonthActualCost = 0, currentMonthPlannedCost =0;
       if (lastMonitoredMonth) {
-        earnedValue = lastMonitoredMonth ? _.get(monActBrk, `monthly.${lastMonitoredMonth}.cumEarVal`, 0) : 0;
-        actualCost = lastMonitoredMonth ? _.get(monActBrk, `monthly.${lastMonitoredMonth}.cumActCost`, 0) : 0;
-        actualCostNonCumulative = lastMonitoredMonth ? _.get(monActBrk, `monthly.${lastMonitoredMonth}.actualCost`, 0) : 0;
+        // earnedValue = lastMonitoredMonth ? _.get(monActBrk, `monthly.${lastMonitoredMonth}.cumEarVal`, 0) : 0;
+        // actualCost = lastMonitoredMonth ? _.get(monActBrk, `monthly.${lastMonitoredMonth}.cumActCost`, 0) : 0;
+        // currentMonthActualCost =   _.get(monActBrk, `monthly.${startOfMonth(new Date())}.actualCost`, 0) ;
+        // currentMonthPlannedCost = _.get(monPlnBrk, `monthly.${startOfMonth(new Date())}. plannedCost`, 0);
+
+
+
+        earnedValue = monActBrk.monthly[lastMonitoredMonth].cumEarVal;
+        actualCost =  monActBrk.monthly[lastMonitoredMonth].cumActCost;
+        currentMonthActualCost = monActBrk.monthly[startOfMonth(new Date())] ? monActBrk.monthly[startOfMonth(new Date())].actualCost:0;
+        currentMonthPlannedCost =monPlnBrk.monthly[startOfMonth(new Date())] ? monPlnBrk.monthly[startOfMonth(new Date())].plannedCost:0;
+        //currentMonthActualCost = startOfMonth(new Date()) astMonitoredMonth && firs? _.get(monActBrk, `monthly.${lastMonitoredMonth}.actualCost`, 0) : 0;
+
       }
 
 
@@ -2066,19 +2105,19 @@ module.exports = {
       let varianceAtCompletion = budAtComp - estimateAtCompletion;
       v = estimateAtCompletion - actualCost;
       let TCPI = budAtComp != earnedValue ? (budAtComp - earnedValue) / (estimateAtCompletion - actualCost) : 0;
-      let averageMonthlyCost = budAtComp / Object.keys(monPlnBrk.monthly).length;
       let actualDaysSinceExecution = businessDays(
         firstExecutedTask ? firstExecutedTask.actualStartDate : new Date(),
         completionDate || new Date()
       );
       let totalPlannedDays = businessDays(rootTask.plannedStartDate, rootTask.plannedEndDate);
+
       let performanceData = {
         PerformanceCostData: {
-          ActualCost: actualCostNonCumulative, // actual cost for the current month
-          AverageMonthlyCost: averageMonthlyCost, // total cost divided by the total budget
-          PurpleRange: [0, averageMonthlyCost],
-          YellowRange: [averageMonthlyCost, averageMonthlyCost * 1.25],
-          RedRange: [averageMonthlyCost * 1.25, averageMonthlyCost * 1.5]
+          ActualCost: currentMonthActualCost, // actual cost for the current month
+          AverageMonthlyCost: currentMonthPlannedCost, // total cost divided by the total budget
+          PurpleRange: [0, currentMonthPlannedCost],
+          YellowRange: [currentMonthPlannedCost, currentMonthPlannedCost * 1.25],
+          RedRange: [currentMonthPlannedCost * 1.25, currentMonthPlannedCost * 1.5]
         },
         PerformanceBudgetData: {
           TotalEstimatedBudget: budAtComp, //sum of all PlannedCost for Level-1 tasks
@@ -2268,7 +2307,7 @@ module.exports = {
       utilizedResources.forEach((row) => {
         consumableMaterialBreakup[row._id.task][row._id.rankId].Actual = { qty: row.qty, total: row.total };
       });
-      // console.log(EVMValuesPerMonth)
+
       let data = {
         monitorings,
         estimateAtCompletion,
@@ -2297,6 +2336,7 @@ module.exports = {
       };
       return res.json({ success: true, data: data });
     } catch (error) {
+      console.log(error)
       respondWithError(res, error, 'Error when getting task.');
     }
   },
@@ -2335,7 +2375,7 @@ module.exports = {
     try {
       const DATETIME = dateFormat(new Date(), 'yyyy-mm-dd HH:MM:ss');
       var id = req.params.projectId;
-      // console.log(id);
+ 
       taskModel.aggregate(
         [
           {
@@ -2458,7 +2498,7 @@ module.exports = {
       var id = req.params.id;
       var arrBody = req.body.workPackages;
       arrBody.forEach((element, index) => {
-        // console.log(element)
+
         taskModel.findOne({ _id: element._id }, function (err, task) {
           if (err) respondWithError(res, err, 'Error when getting task.');
           if (!task) respondWithNotFound(res, 'No such task');
@@ -2466,7 +2506,7 @@ module.exports = {
           if (element.completed) task.completed = element.completed;
           task.updatedDate = DATETIME;
           task.updatedBy = element.updatedBy ? element.updatedBy : task.updatedBy;
-          // console.log(task)
+        
           task.save(function (err, task) {
             if (err) respondWithError(res, err, 'Error when updating task.');
             if (index == arrBody.length - 1) {
@@ -2522,7 +2562,7 @@ module.exports = {
           }
 
           tasks.forEach(async (currTask) => {
-            // console.log(element)
+   
             let nextCycleData = nextCycle(
               currTask.monitoringFrequency,
               currTask.plannedStartDate,
@@ -2598,7 +2638,7 @@ module.exports = {
     const DATETIME = dateFormat(new Date(), 'yyyy-mm-dd HH:MM:ss');
     var { updatedStatus } = req.body;
     taskModel.findByIdAndUpdate(updatedStatus._id, {
-      actualCost: updatedStatus.actualCost,
+      $inc: { actualCost: updatedStatus.actualCost},
       lastMonitoredOn: DATETIME,
       ...(updatedStatus.completed && {
         actualEndDate: updatedStatus.completed == 100 ? DATETIME : null,
@@ -2653,12 +2693,12 @@ module.exports = {
       var id = req.params.id;
       var arrBody = req.body;
       arrBody.forEach((element, index) => {
-        // console.log(element)
+     
         taskModel.findOne({ _id: element._id }, function (err, task) {
           if (err) respondWithError(res, err, 'Error when getting task.');
           if (!task) respondWithNotFound(res, 'No such task');
-          // console.log(req.body)
-          console.log(element.project);
+     
+  
 
           task.project = element.project ? element.project : task.project;
           task.monitoringFrequency = element.monitoringFrequency
@@ -2673,7 +2713,7 @@ module.exports = {
           task.milestone = element.milestone;
           task.updatedDate = DATETIME;
           task.updatedBy = element.updatedBy ? element.updatedBy : task.updatedBy;
-          // console.log(task)
+
           task.save(function (err, task) {
             if (err) respondWithError(res, err, 'Error when updating task.');
             if (index == arrBody.length - 1) {
@@ -2681,7 +2721,7 @@ module.exports = {
               log.write('INFO', LOGMESSAGE);
               return res.json({ success: true, msg: 'task list is updated' });
             }
-            // return res.json(task);
+      
           });
         });
       });
@@ -2695,7 +2735,7 @@ module.exports = {
       const DATETIME = dateFormat(new Date(), 'yyyy-mm-dd HH:MM:ss');
       var id = req.params.taskId;
       var projectId = req.params.projectId;
-      console.log({ taskId: id, project: projectId });
+ 
 
       taskModel.deleteOne({ taskId: id, project: projectId }, function (err, task) {
         if (err) respondWithError(res, err, 'Error when deleting task.');

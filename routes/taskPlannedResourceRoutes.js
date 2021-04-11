@@ -23,6 +23,7 @@ router.post("/", taskPlannedResourceController.create);
  * PUT
  */
 router.put("/", taskPlannedResourceController.update);
+router.put("/updateStatus", taskPlannedResourceController.updateStatus);
 
 /*
  * DELETE

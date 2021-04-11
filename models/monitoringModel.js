@@ -22,7 +22,9 @@ var monitoringSchema = new Schema(
     completion: {
       type: Number, required: true
     },
-    
+    completionVariance: {
+      type: Number, required: true
+    },
     createdDate: {
       type: Date, default: Date.now
     },
