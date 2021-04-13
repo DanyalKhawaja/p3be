@@ -2472,10 +2472,12 @@ module.exports = {
     try {
       const DATETIME = dateFormat(new Date(), 'yyyy-mm-dd HH:MM:ss');
       taskModel.deleteMany({ project: req.body[0].project }, function (err, task) {
+
         if (err) respondWithError(res, err, 'Error when deleting task.');
         if (!task) respondWithNotFound(res, 'No such task');
 
         taskModel.insertMany(req.body, function (err, data) {
+          console.log(err)
           if (err) respondWithError(res, err, 'Error when creating task.');
           const LOGMESSAGE = DATETIME + '|task created';
           log.write('INFO', LOGMESSAGE);
@@ -2488,6 +2490,7 @@ module.exports = {
         });
       });
     } catch (error) {
+      console.log(error)
       respondWithError(res, error, 'Error when getting task.');
     }
   },
