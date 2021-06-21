@@ -24,11 +24,9 @@ const projectRoutes = require('./routes/projectRoutes')
 const projectResourceRoutes = require('./routes/projectResourceRoutes')
 const projectLocationRoutes = require('./routes/projectLocationRoutes')
 const issueTypeRoutes = require('./routes/issueTypeRoutes')
+const boqRoutes = require('./routes/boqRoutes');
 const issueCategoryRoutes = require('./routes/issueCategoryRoutes')
 const issueStatusRoutes = require('./routes/issueStatusRoutes')
-// const issueInitiationLogRoutes = require('./routes/issueInitiationLogRoutes')
-// const issueResolutionLogRoutes = require('./routes/issueResolutionLogRoutes')
-// const issueUpdateRoutes = require('./routes/issueUpdateRoutes')
 const issueLogRoutes = require('./routes/issueLogRoutes')
 const taskRoutes = require('./routes/taskRoutes')
 const taskPlannedResourceRoutes = require('./routes/taskPlannedResourceRoutes')
@@ -72,8 +70,8 @@ const app = express();
 
 app.use(cors());
 app.use(logger("dev"));
-app.use(express.json());
-app.use(express.urlencoded({ extended: false }));
+app.use(express.json({limit: '50mb'}));
+app.use(express.urlencoded({limit: '50mb', extended: false }));
 app.use(cookieParser());
 app.use(express.static(path.join(__dirname, "public")));
 
@@ -81,7 +79,6 @@ app.use(express.static(path.join(__dirname, "public")));
 app.use(morgan("combined"));
 app.use(passport.initialize());
 app.use(passport.session());
-
 require('./lib/passport');
 
 app.use("/", indexRouter);
@@ -100,6 +97,8 @@ app.use('/program', passport.authenticate('jwt', { session: false }), programRou
 app.use('/project', passport.authenticate('jwt', { session: false }), projectRoutes)
 app.use('/projectResource', passport.authenticate('jwt', { session: false }), projectResourceRoutes)
 app.use('/projectLocation', passport.authenticate('jwt', { session: false }), projectLocationRoutes)
+
+app.use("/boq", passport.authenticate('jwt', { session: false }), boqRoutes)
 app.use("/issuetype", passport.authenticate('jwt', { session: false }), issueTypeRoutes)
 app.use("/issuecategory", passport.authenticate('jwt', { session: false }), issueCategoryRoutes)
 app.use("/issuestatus", passport.authenticate('jwt', { session: false }), issueStatusRoutes)
@@ -141,6 +140,5 @@ app.use("/pptCVsC", passport.authenticate('jwt', { session: false }), pptCVsCRou
 
 
 app.use("/component",passport.authenticate('jwt', { session: false }),componentRoutes)
-
 module.exports = app;
 

@@ -3,10 +3,13 @@ var schema = mongoose.Schema;
 var TaskPlannedResourceBaseModel = require("./taskPlannedResourceBaseModel");
 
 var taskPlannedBOQSchema = new schema({
-  
+
    boqType: {
       type: String,
-      // required: true
+      required: true
+   },
+   boq: {
+      type: mongoose.Schema.ObjectId, ref: "BOQ", required: true
    },
    top3: {
       type: Number,

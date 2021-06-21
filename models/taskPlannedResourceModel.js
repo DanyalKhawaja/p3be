@@ -13,6 +13,10 @@ var taskPlannedResourceSchema = new schema({
       ref: "ResourceType",
       // required: true
    },
+   allocation: {
+      type: Number,
+      default: 1
+   },
    external: {
      type: Boolean,
      default: false

@@ -4,10 +4,16 @@ var TaskUtilizedResourceBaseModel = require('./taskUtilizedResourceBaseModel.js'
 
 var taskUtilizedBOQSchema = new Schema({
 
+  boq: {
+    type: mongoose.Schema.ObjectId,
+    ref: "BOQ",
+  },
+ 
   boqType: {
     type: String,
-    // required: true
+    required: true
   },
+
   top3: {
     type: Number,
     default: 0

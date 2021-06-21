@@ -42,8 +42,8 @@ const userSchema = new schema({
       required: true
    },
    companyId: {
-     type: mongoose.Schema.ObjectId,
-     ref: "Company",
+      type: mongoose.Schema.ObjectId,
+      ref: "Company",
       required: true
    },
    department: {
@@ -51,9 +51,9 @@ const userSchema = new schema({
       ref: "Department"
    },
    role: {
-      type: mongoose.Schema.ObjectId,
-      ref: "Role",
-      required: true
+      type: String,
+      required: true,
+      ref: "Role"
    },
    lineManager: {
       type: mongoose.Schema.ObjectId,
@@ -95,19 +95,19 @@ const userSchema = new schema({
       default: false
    }
 });
-userSchema.methods.validPassword = function(password, callback) {
+userSchema.methods.validPassword = function (password, callback) {
    var hash = crypto.pbkdf2Sync(password, this.salt, 1000, 64, "sha512").toString("hex");
    callback(null, this.password === hash);
    // return this.password === hash;
 };
-userSchema.methods.comparePassword = function(candidatePassword, hash, callback) {
+userSchema.methods.comparePassword = function (candidatePassword, hash, callback) {
    bcrypt.compare(candidatePassword, hash, (err, isMatch) => {
       if (err)
          callback(err, null);
       callback(null, isMatch);
    });
 };
-userSchema.methods.setPassword = function(newUser, callback) {
+userSchema.methods.setPassword = function (newUser, callback) {
    // this.salt = crypto.randomBytes(16).toString('hex');
    // this.password = crypto.pbkdf2Sync(password, this.salt, 1000, 64, 'sha512').toString('hex');
 
@@ -120,7 +120,7 @@ userSchema.methods.setPassword = function(newUser, callback) {
       });
    });
 };
-userSchema.methods.generateJwt = function(user) {
+userSchema.methods.generateJwt = function (user) {
    return jwt.sign(user.toJSON(), config.token.secret, {
       expiresIn: config.token.expiresIn
    });

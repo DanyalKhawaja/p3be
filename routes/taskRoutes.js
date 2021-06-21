@@ -4,6 +4,7 @@ const passport = require('passport');
 const router = express.Router();
 const taskController = require("../controllers/taskController");
 
+
 /*
  * GET
  */
@@ -18,6 +19,7 @@ router.post("/", taskController.create);
  * PUT
  */
 router.put("/", taskController.update);
+
 
 /*
  * DELETE
@@ -41,7 +43,15 @@ router.get("/byTaskIdAndProjectId/:id/:projectId", taskController.show);
 router.get("/byProject/:id", taskController.showTaskByProjectId);
 router.get("/dueExecutionByProject/:id", taskController.dueExecutionByProject);
 router.get("/wptasksByProject/:id", taskController.dashboardByProjectId);
+router.get("/gisDashboard/:id", taskController.gisDashboardByProjectId);
+router.get("/monthlyLabor/:id", taskController.monthlyLaborByProjectId);
+router.get("/wpVariance/:id", taskController.wpVarianceByProjectId);
+router.get("/evmDashboard/:id", taskController.evmDashboardByProjectId);
+router.get("/forecastDashboard/:id", taskController.forecastDashboardByProjectId);
+router.get("/kpiDashboard/:id", taskController.kpiDashboardByProjectId);
 router.get("/openByProjectId/:id", taskController.openByProjectId);
+router.get("/workedByProjectId/:id", taskController.workedByProjectId);
+
 router.put("/cron/:id", taskController.markMonitorings);
 router.get("/dashboardByProgram/:id", taskController.dashboardByProgramId);
 router.get("/dashboardByPortfolio/:id", taskController.dashboardByPortfolioId);

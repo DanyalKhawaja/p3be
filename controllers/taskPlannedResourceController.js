@@ -114,7 +114,6 @@ module.exports = {
         const LOGMESSAGE = DATETIME + "|taskPlannedResource found of project:" + projectId;
         log.write("INFO", LOGMESSAGE);
         return res.json({ success: true, data: taskPlannedResource });
-        // return res.json(taskPlannedResource);
       }).populate("resource", "resourceName");
     } catch (error) {
       const LOGMESSAGE = DATETIME + "|" + error.message;

@@ -14,7 +14,7 @@ var monitoringSchema = new Schema(
 
     },
     monitoringDate: {
-      type: Date, default: Date.now
+      type: Date
     },
     actualCost: {
       type: Number, required: true
@@ -24,6 +24,12 @@ var monitoringSchema = new Schema(
     },
     completionVariance: {
       type: Number, required: true
+    },
+    monitoringWeight: {
+      type: Number, required: true
+    },
+    files: {
+      type: [String]
     },
     createdDate: {
       type: Date, default: Date.now

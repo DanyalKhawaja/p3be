@@ -84,8 +84,8 @@ module.exports = {
     try {
      
       var {projectId} = req.params;
-      taskUtilizedResourceBaseModel.find({}, function (err, taskUtilizedResource) {
-        console.log(taskUtilizedResource)
+      
+      taskUtilizedResourceBaseModel.find({project: projectId}, function (err, taskUtilizedResource) {
         if (err) {
           const LOGMESSAGE = DATETIME + "|" + err.message;
           log.write("ERROR", LOGMESSAGE);
@@ -106,8 +106,8 @@ module.exports = {
         const LOGMESSAGE = DATETIME + "|taskUtilizedResource found of project:" + projectId;
         log.write("INFO", LOGMESSAGE);
         return res.json({ success: true, data: taskUtilizedResource });
-        // return res.json(taskUtilizedResource);
-      });
+
+      }).populate('tpr','resourceType').populate("resource", "resourceName");
     } catch (error) {
       const LOGMESSAGE = DATETIME + "|" + error.message;
       log.write("ERROR", LOGMESSAGE);
@@ -119,6 +119,46 @@ module.exports = {
     }
 
   },
+  // showSummaryByProject: function (req, res) {
+  //   const DATETIME = dateFormat(new Date(), "yyyy-mm-dd HH:MM:ss");
+  //   try {
+     
+  //     var {projectId} = req.params;
+      
+  //     taskUtilizedResourceBaseModel.aggregate([{$match: {project: projectId}},{$group:{_id: {wp: "$wp",resource: "$resource"} }}], function (err, taskUtilizedResource) {
+  //       if (err) {
+  //         const LOGMESSAGE = DATETIME + "|" + err.message;
+  //         log.write("ERROR", LOGMESSAGE);
+  //         return res.status(500).json({
+  //           success: false,
+  //           msg: "Error when getting taskUtilizedResource.",
+  //           error: err
+  //         });
+  //       }
+  //       if (!taskUtilizedResource) {
+  //         const LOGMESSAGE = DATETIME + "|NO Such taskUtilizedResource of project:" + projectId;
+  //         log.write("ERROR", LOGMESSAGE);
+  //         return res.status(404).json({
+  //           success: false,
+  //           msg: "No such taskUtilizedResource"
+  //         });
+  //       }
+  //       const LOGMESSAGE = DATETIME + "|taskUtilizedResource found of project:" + projectId;
+  //       log.write("INFO", LOGMESSAGE);
+  //       return res.json({ success: true, data: taskUtilizedResource });
+
+  //     }).populate('tpr','resourceType').populate("resource", "resourceName");
+  //   } catch (error) {
+  //     const LOGMESSAGE = DATETIME + "|" + error.message;
+  //     log.write("ERROR", LOGMESSAGE);
+  //     return res.status(500).json({
+  //       success: false,
+  //       msg: "Error when getting taskUtilizedResource.",
+  //       error: error
+  //     });
+  //   }
+
+  // },
 
 
   create: async function (req, res) {

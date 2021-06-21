@@ -4,6 +4,9 @@ const router = express.Router();
 const resourceTypeController = require("../controllers/resourceTypeController");
 
 
+
+
+
 /*
  * GET
  */

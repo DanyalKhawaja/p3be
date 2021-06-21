@@ -9,7 +9,8 @@ module.exports = {
         host: "smtp.live.com",
         senderName: "Test Node API",
         senderEmail: "freedevel0p3r",
-        senderPassword: "fr33d3v3l0p3r",
+        senderPassword: "hnmdlihejoiupxew",
+        //fr33d3v3l0p3r
     },
     token: {
         secret: 'fkeym',

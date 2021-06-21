@@ -9,6 +9,7 @@ const subscriptionModel = require("../models/subscriptionModel");
 const transport = require("../lib/transport");
 const config = require('./../config/config')
 const log = require('../lib/logger');
+const pageModel = require('../models/pageModel');
 
 const key = Buffer.from('5ebe2294ecd0e0f08eab7690d2a6ee69', 'hex');
 const iv = Buffer.from('26ae5cc854e36b6bdfca366848dea6bb', 'hex');
@@ -37,7 +38,11 @@ module.exports = {
   //login user
   login: function (req, res, next) {
     const DATETIME = dateFormat(new Date(), "yyyy-mm-dd HH:MM:ss");
-    userModel.findOne({ email: req.body.email }, function (err, user) {
+    userModel.findOne({ email: req.body.email }) .populate('lineManager', 'username') 
+    .populate('department', 'name')
+    .populate('role', 'name')
+    .populate('companyId', 'name', 'company')
+   .exec(function (err, user) {
       if (!user) {
         const LOGMESSAGE = DATETIME + "| The email address ' + req.body.email + ' is not associated with any account. Double-check your email address and try again.";
         log.write("ERROR", LOGMESSAGE);
@@ -45,7 +50,6 @@ module.exports = {
       }
 
       user.comparePassword(req.body.password, user.password, function (err, isMatch) {
-
         if (!isMatch) {
           const LOGMESSAGE = DATETIME + "|Invalid email or password";
           log.write("ERROR", LOGMESSAGE);
@@ -81,9 +85,13 @@ module.exports = {
               });
             }
 
-            const LOGMESSAGE = DATETIME + "|Your account has not been verified.";
+            const LOGMESSAGE = DATETIME + "|Your account is verified.";
             log.write("INFO", LOGMESSAGE);
-            res.send({ success: true, subscription: subscription, token: 'Bearer ' + user.generateJwt(user), user: user.toJSON() });
+            pageModel.find({ disabled: false, roles: user.role._id }, function (errors, menuOptions) {
+              res.send({ success: true, subscription, menuOptions: JSON.stringify(menuOptions), token: 'Bearer ' + user.generateJwt(user), user: user.toJSON() });
+
+            }).lean().sort({ order: 1 });
+
 
           });
         } catch (error) {
@@ -97,11 +105,12 @@ module.exports = {
         }
 
       });
-    })
-      .populate('department', 'name')
-      .populate('role', 'name, code')
-      .populate('lineManager', 'username')
-      .populate('companyId', 'name', 'company');
+    }) 
+   
+   
+   
+    
+     
   },
 
   //signup User
@@ -235,7 +244,7 @@ module.exports = {
 
       // Create and save the user
       user = new userModel({
-        ...req.body,  isVerified: true
+        ...req.body, isVerified: true
       });
       user.setPassword(user, (error, isSet) => {
         user.save(function (err) {
@@ -284,7 +293,7 @@ module.exports = {
               user: config.email.senderEmail,
               pass: config.email.senderPassword
             },
-            secure: false,
+            secure: true,
             tls: {
               // ciphers: 'SSLv3',
               rejectUnauthorized: false

@@ -1,10 +1,19 @@
 const dateFormat = require("dateformat");
-const { add, format, eachMonthOfInterval } = require('date-fns');
+const { add, format, eachDayOfInterval, eachMonthOfInterval,startOfMonth } = require('date-fns');
 
-const createMonthlyArray = (start) => {
-    let monthsList = eachMonthOfInterval({ start, end: add(new Date(), { months: 1 }) });
+const createMonthlyArray = (start, end = add(new Date(), { months: 1 }),config) => {
+    let monthsList = eachMonthOfInterval({ start, end });
     return monthsList.map(month => ({
-        _id: format(month, 'yyyy-MM'),
+        _id: format(month, 'yyyy-MM'),...config
+        
+    }));
+};
+
+
+const createDates = (start, end) => {
+    let dates = eachDayOfInterval({ start, end });
+    return dates.map(date => ({
+        date: date,
         plannedCost: 0,
         plannedCompletion: 0,
         actualCompletion: 0,
@@ -19,20 +28,19 @@ const createMonthlyArray = (start) => {
 };
 
 
-const getFirstDate = date => {
-    return new Date(date.getFullYear(), date.getMonth());
-}
-
 const getMonthID = date => {
     return (['01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12'][date.getMonth()] + date.getFullYear());
 }
 
-const businessDays = (startDate, endDate) => {
+const isBusinessDay = date => {
+    let weekday = date.getDay();
+    return !((weekday == 6) || (weekday == 0));
+}
+
+const businessDays = (curDate, endDate) => {
     var count = 0;
-    var curDate = startDate;
     while (curDate <= endDate) {
-        var dayOfWeek = curDate.getDay();
-        if (!((dayOfWeek == 6) || (dayOfWeek == 0)))
+        if (isBusinessDay(curDate))
             count++;
         curDate.setDate(curDate.getDate() + 1);
     }
@@ -120,4 +128,4 @@ function respondWithNotFound(res, msg) {
 }
 
 
-module.exports = { createMonthlyArray, respondWithError, nextCycle, getFirstDate, getFt, businessDays };
+module.exports = { isBusinessDay, createDates, createMonthlyArray, respondWithError, nextCycle, getFt, businessDays };

@@ -3,7 +3,8 @@ var Schema = mongoose.Schema;
 
 var RoleSchema = new Schema(
   {
-    code: { type: String, unique: true, required: true },
+ 
+    _id: { type: String, unique: true, required: true },
     name: { type: String, unique: true, required: true },
     description: { type: String }
   }

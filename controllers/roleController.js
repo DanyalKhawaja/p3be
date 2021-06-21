@@ -115,7 +115,7 @@ module.exports = {
     try {
       const DATETIME = dateFormat(new Date(), "yyyy-mm-dd HH:MM:ss");
       var role = new roleModel({
-        code: req.body.code,
+        _id: req.body._id,
         name: req.body.name,
         description: req.body.description
       });
@@ -169,7 +169,7 @@ module.exports = {
             msg: "No such role"
           });
         }
-        role.code = req.body.code ? req.body.code : role.code;
+        role._id = req.body._id ? req.body._id : role._id;
         role.name = req.body.name ? req.body.name : role.name;
         role.description = req.body.description ? req.body.description : role.description;
   
