@@ -90,7 +90,7 @@ module.exports = {
             pageModel.find({ disabled: false, roles: user.role._id }, function (errors, menuOptions) {
               res.send({ success: true, subscription, menuOptions: JSON.stringify(menuOptions), token: 'Bearer ' + user.generateJwt(user), user: user.toJSON() });
 
-            }).lean().sort({ order: 1 });
+            }).lean().limit(100).sort({ order: 1 });
 
 
           });

@@ -4,6 +4,7 @@ var ObjectId = Mongoose.Types.ObjectId;
 const resourceModel = require("../models/resourceModel");
 const taskPlannedResourceModel = require("../models/taskPlannedResourceModel");
 const log = require("../lib/logger");
+const { lte } = require("lodash");
 
 module.exports = {
   list: function (req, res) {
@@ -329,8 +330,8 @@ showAvailableByResourceType: function (req, res) {
       //const ObjectId = mongoose.Types.ObjectId;
       const DATETIME = dateFormat(new Date(), "yyyy-mm-dd HH:MM:ss");
       var id = req.params.typeId;
-      var startDate = req.params.startDate;
-      var endDate = req.params.endDate;
+      var startDate = new Date(req.params.startDate);
+      var endDate = new Date(req.params.endDate);
       var wbsId = req.params.wbsId;
       var projectId = req.params.projectId;
       var idds = taskPlannedResourceModel.aggregate([{
@@ -338,10 +339,6 @@ showAvailableByResourceType: function (req, res) {
           $and: [
             {
               resourceType: ObjectId(id)
-            // }, {
-            //   wp: {
-            //     $ne: wbsId
-            //   }
             }, {
               project: {
                 $ne: ObjectId(projectId)
@@ -352,25 +349,40 @@ showAvailableByResourceType: function (req, res) {
                   $and: [
                     {
                       plannedStartDate: {
-                        $lt: new Date(startDate)
+                        $lte: startDate
                       }
                     }, {
                       plannedEndDate: {
-                        $gt: new Date(endDate)
+                        $gte: endDate
                       }
                     }
                   ]
-                }, {
+                },
+                {
+                  $and: [
+                    {
+                      plannedStartDate: {
+                        $gte: startDate
+                      }
+                    }, {
+                      plannedEndDate: {
+                        $lte: endDate
+                      }
+                    }
+                  ]
+                }
+                
+                , {
                   $or: [
                     {
                       $and: [
                         {
                           plannedStartDate: {
-                            $lte: new Date(startDate)
+                            $lte: startDate
                           }
                         }, {
                           plannedEndDate: {
-                            $gte: new Date(startDate)
+                            $gte: startDate
                           }
                         }
                       ]
@@ -378,11 +390,11 @@ showAvailableByResourceType: function (req, res) {
                       $and: [
                         {
                           plannedStartDate: {
-                            $lte: new Date(endDate)
+                            $lte: endDate
                           }
                         }, {
                           plannedEndDate: {
-                            $gte: new Date(endDate)
+                            $gte: endDate
                           }
                         }
                       ]
@@ -395,81 +407,16 @@ showAvailableByResourceType: function (req, res) {
 
         }
       }, { $group: { _id: "$resource", engagement: { $sum: "$allocation" } } }],
-
-
-
-        // var ids = taskPlannedResourceModel.find({
-        //   $and: [
-        //     {
-        //       resourceType: ObjectId(id)
-        //     }, {
-        //       wp: {
-        //         $ne: wbsId
-        //       }
-        //     }, {
-        //       $or: [
-        //         {
-        //           $and: [
-        //             {
-        //               plannedStartDate: {
-        //                 $lt: startDate
-        //               }
-        //             }, {
-        //               plannedEndDate: {
-        //                 $gt: endDate
-        //               }
-        //             }
-        //           ]
-        //         }, {
-        //           $or: [
-        //             {
-        //               $and: [
-        //                 {
-        //                   plannedStartDate: {
-        //                     $lte: startDate
-        //                   }
-        //                 }, {
-        //                   plannedEndDate: {
-        //                     $gte: startDate
-        //                   }
-        //                 }
-        //               ]
-        //             }, {
-        //               $and: [
-        //                 {
-        //                   plannedStartDate: {
-        //                     $lte: endDate
-        //                   }
-        //                 }, {
-        //                   plannedEndDate: {
-        //                     $gte: endDate
-        //                   }
-        //                 }
-        //               ]
-        //             }
-        //           ]
-        //         }
-        //       ]
-        //     }
-        //   ]
-
-        // }
-        //   , {
-        //     _id: 0,
-        //     resource: 1
-        //   }
-        // ).exec(
-
         function (err, engagedResources) {
-          var rs = new Array(), rsMap = {};
 
-
-          for (var i = 0; i < engagedResources.length; i++) {
-            rs.push(engagedResources[i]._id);
-            rsMap[rs[i]] = engagedResources[i].engagement;
+          var rsMap = {};
+          for (let eRes of engagedResources) {
+            if(rsMap[eRes._id]) {
+              rsMap[eRes._id] += eRes.engagement;
+            } else {
+              rsMap[eRes._id] = eRes.engagement;
+            }
           }
-          //resourceModel.find({"_id": {"$nin": [ObjectId("4f08a75f306b428fb9d8bb2e"),  ObjectId("4f08a766306b428fb9d8bb2f")]}})`
-
           resourceModel.find({
             $and: [
               {
@@ -494,16 +441,16 @@ showAvailableByResourceType: function (req, res) {
             resourceUnit: 1,
             rate: 1,
             currency: 1,
-            isActive: 1,
-            engaged: { $cond: { if: { $in: ["$_id", rs] }, then: true, else: false } }
-
+            isActive: 1
+            // engaged: { $cond: { if: { $in: ["$_id", rs] }, then: true, else: false } }
           }
 
             , function (err, availableResources) {
               const LOGMESSAGE = DATETIME + "| resource found";
-              //engaged: { $concat:[rsMap["$resource"]] }
               log.write("INFO", LOGMESSAGE);
-              availableResources.forEach((el, i) => availableResources[i].allocated = rsMap[el._id]);
+              console.table(rsMap)
+              availableResources.forEach((el,i) => availableResources[i].allocated = rsMap[el._id]);
+              console.table(availableResources)
               return res.json({ success: true, data: availableResources });
             }).sort("resourceName").lean();
         });
@@ -513,7 +460,208 @@ showAvailableByResourceType: function (req, res) {
       return res.status(500).json({ success: false, msg: "Error when getting resource.", error: err });
     }
   },
+  showResourceAllocations: async function (req, res) {
+    try {
+      const DATETIME = dateFormat(new Date(), "yyyy-mm-dd HH:MM:ss");
+      var projectId = req.params.projectId;
+      var resources = await taskPlannedResourceModel.find({project:ObjectId(projectId) }).populate('task','description').populate('resource','resourceName').populate('resourceType','name').lean();
+      let promises = [];
+      resources.forEach((doc,i) => {
+        let promise = taskPlannedResourceModel.aggregate([{
+          $match: {
+            $and: [
+              {
+                resource: ObjectId(doc.resource._id)
+              }, {
+                $or: [
+                  {
+                    $and: [
+                      {
+                        plannedStartDate: {
+                          $lt: doc.plannedStartDate
+                        }
+                      }, {
+                        plannedEndDate: {
+                          $gt: doc.plannedEndDate
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    $and: [
+                      {
+                        plannedStartDate: {
+                          $gte:  doc.plannedStartDate
+                        }
+                      }, {
+                        plannedEndDate: {
+                          $lte: doc.plannedEndDate
+                        }
+                      }
+                    ]
+                  }
+                  , {
+                    $or: [
+                      {
+                        $and: [
+                          {
+                            plannedStartDate: {
+                              $lte:  doc.plannedStartDate
+                            }
+                          }, {
+                            plannedEndDate: {
+                              $gte:  doc.plannedStartDate
+                            }
+                          }
+                        ]
+                      }, {
+                        $and: [
+                          {
+                            plannedStartDate: {
+                              $lte: doc.plannedEndDate
+                            }
+                          }, {
+                            plannedEndDate: {
+                              $gte: doc.plannedEndDate
+                            }
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]}
+        }, { $group: { _id: "$resource", engagement: { $sum: "$allocation" } } }]
+            ).exec().then(function (engagedResources) {
+              resources[i].totalAllocated = engagedResources[0].engagement;
+          });
+          promises.push(promise);
+      })
 
+      Promise.all(promises).then(() => {
+        return res.json(resources);
+      } )
+
+     
+    } catch (error) {
+      const LOGMESSAGE = DATETIME + "|" + err.message;
+      log.write("ERROR", LOGMESSAGE);
+      return res.status(500).json({ success: false, msg: "Error when getting resource.", error: err });
+    }
+  },
+  showResourceSchedule: function (req, res) {
+    const DATETIME = dateFormat(new Date(), "yyyy-mm-dd HH:MM:ss");
+    try {
+      var id = req.params.resourceId;
+      var startDate = new Date(req.params.startDate);
+      var endDate = new Date(req.params.endDate);
+      console.log(startDate,endDate)
+      taskPlannedResourceModel.find({
+          $and: [
+            {
+              resource: ObjectId(id)
+            }, {
+              $or: [
+                {
+                  $and: [
+                    {
+                      plannedStartDate: {
+                        $lt: startDate
+                      }
+                    }, {
+                      plannedEndDate: {
+                        $gt: endDate
+                      }
+                    }
+                  ]
+                },
+                {
+                  $and: [
+                    {
+                      plannedStartDate: {
+                        $gte: startDate
+                      }
+                    }, {
+                      plannedEndDate: {
+                        $lte: endDate
+                      }
+                    }
+                  ]
+                }
+                , {
+                  $or: [
+                    {
+                      $and: [
+                        {
+                          plannedStartDate: {
+                            $lte: startDate
+                          }
+                        }, {
+                          plannedEndDate: {
+                            $gte: startDate
+                          }
+                        }
+                      ]
+                    }, {
+                      $and: [
+                        {
+                          plannedStartDate: {
+                            $lte: endDate
+                          }
+                        }, {
+                          plannedEndDate: {
+                            $gte: endDate
+                          }
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]},
+        function (err, schedule) {
+          if (err) {
+            const LOGMESSAGE = DATETIME + "|" + err.message;
+            log.write("ERROR", LOGMESSAGE);
+            return res.status(500).json({ success: false, msg: "Error when getting resource.", error: err });
+          }
+          return res.status(200).json({ success: true, data: schedule });
+        }).populate('task','description').populate('resourceType','name').populate('resource','resourceName').populate('project','name').sort({plannedStartDate: 1});
+    } catch (err) {
+      const LOGMESSAGE = DATETIME + "|" + err.message;
+      log.write("ERROR", LOGMESSAGE);
+      return res.status(500).json({ success: false, msg: "Error when getting resource.", error: err });
+    }
+  },
+  showResourceTypeSchedule: function (req, res) {
+    const DATETIME = dateFormat(new Date(), "yyyy-mm-dd HH:MM:ss");
+    try {
+      var resourceTypeId = req.params.resourceTypeId;
+      var projectId = req.params.projectId;
+      taskPlannedResourceModel.find({
+          $and: [
+            {
+              project: ObjectId(projectId)
+            },  {
+              resourceType: ObjectId(resourceTypeId)
+            }
+          ]},
+        function (err, schedule) {
+          if (err) {
+            const LOGMESSAGE = DATETIME + "|" + err.message;
+            log.write("ERROR", LOGMESSAGE);
+            return res.status(500).json({ success: false, msg: "Error when getting resource.", error: err });
+          }
+          return res.status(200).json({ success: true, data: schedule });
+        }).populate('task','description').populate('resource','resourceName').populate('resourceType','name').populate('project','name').sort({plannedStartDate: 1});
+    } catch (err) {
+      const LOGMESSAGE = DATETIME + "|" + err.message;
+      log.write("ERROR", LOGMESSAGE);
+      return res.status(500).json({ success: false, msg: "Error when getting resource.", error: err });
+    }
+  },
   /*
 showAvailableByResourceType: function (req, res) {
   try {

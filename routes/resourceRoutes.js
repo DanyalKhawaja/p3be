@@ -22,6 +22,9 @@ router.get("/:id", resourceController.show);
 
 router.get("/availableResourceType/:projectId/:typeId/:startDate/:endDate/:wbsId", resourceController.showAvailableByResourceType);
 
+router.get("/resourceSchedule/:resourceId/:startDate/:endDate", resourceController.showResourceSchedule);
+router.get("/resourceTypeSchedule/:projectId/:resourceTypeId", resourceController.showResourceTypeSchedule);
+router.get("/allocations/:projectId", resourceController.showResourceAllocations);
 /*
  * GET Resource By ResourceType
  */
