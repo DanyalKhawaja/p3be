@@ -112,14 +112,12 @@ module.exports = {
   // },
 
   create: function (req, res) {
-    try {
       const DATETIME = dateFormat(new Date(), "yyyy-mm-dd HH:MM:ss");
       var stakeholderRole = new stakeholderRoleModel({
-        name: req.body.name,
-        description: req.body.description
+        name: req.body.name
       });
 
-      stakeholderRole.save(function (err, stakeholderRole) {
+      stakeholderRole.save(function (err, data) {
         if (err) {
           const LOGMESSAGE = DATETIME + "|" + err.message;
           log.write("ERROR", LOGMESSAGE);
@@ -131,18 +129,9 @@ module.exports = {
         }
         const LOGMESSAGE = DATETIME + "|Stakeholder Role created";
         log.write("INFO", LOGMESSAGE);
-        // return res.status(201).json(stakeholderRole);
-        return res.json({ success: true, msg: "Stakeholder Role is created", data: stakeholderRole });
+        return res.json({ success: true, msg: "Stakeholder Role is created", data });
       });
-    } catch (error) {
-      const LOGMESSAGE = DATETIME + "|" + error.message;
-      log.write("ERROR", LOGMESSAGE);
-      return res.status(500).json({
-        success: false,
-        msg: "Error when getting Stakeholder Role.",
-        error: error
-      });
-    }
+   
 
   },
 
@@ -169,9 +158,7 @@ module.exports = {
           });
         }
 
-        stakeholderRole.name = req.body.name ? req.body.name : stakeholderRole.name;
-        stakeholderRole.description = req.body.description ? req.body.description : stakeholderRole.description;
-
+        stakeholderRole.name =  req.body.name ;
 
         stakeholderRole.save(function (err, stakeholderRole) {
           if (err) {

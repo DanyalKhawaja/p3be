@@ -113,6 +113,44 @@ module.exports = {
     }
     
   },
+  showByUserId: function (req, res) {
+    try {
+      const DATETIME = dateFormat(new Date(), "yyyy-mm-dd HH:MM:ss");
+      var id = req.params.id;
+      programModel.find({ manager: id }, function (err, program) {
+        if (err) {
+          const LOGMESSAGE = DATETIME + "|" + err.message;
+          log.write("ERROR", LOGMESSAGE);
+          return res.status(500).json({
+            success:false,
+            msg: "Error when getting program.",
+            error: err
+          });
+        }
+        if (!program) {
+          const LOGMESSAGE = DATETIME + "|NO Such program of portfolio:"+id;
+          log.write("ERROR", LOGMESSAGE);
+          return res.status(404).json({
+            success:false,
+            msg: "No such program"
+          });
+        }
+        const LOGMESSAGE = DATETIME + "|program found of portfolio:"+id;
+        log.write("INFO", LOGMESSAGE);
+        return res.json({success:true,data:program});
+        // return res.json(program);
+      }).populate('manager','username').populate('sponsor','username');  
+    } catch (error) {
+      const LOGMESSAGE = DATETIME + "|" + error.message;
+      log.write("ERROR", LOGMESSAGE);
+      return res.status(500).json({
+        success:false,
+        msg: "Error when getting program.",
+        error: error
+      });
+    }
+    
+  },
   lockedList: function (req, res) {
     try {
       const DATETIME = dateFormat(new Date(), "yyyy-mm-dd HH:MM:ss");

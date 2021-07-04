@@ -3,8 +3,7 @@ var schema = mongoose.Schema;
 
 var stakeholderRoleSchema = new schema(
   {
-    name: { type: String, required: true },
-    description : { type: String }
+    name: { type: String, unique: true,required: true }
   }
 );
 

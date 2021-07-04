@@ -6,7 +6,7 @@ const log = require('../lib/logger');
 module.exports = {
 
   create: [
-    check('description', 'Description field is required').not().isEmpty(),
+  
     function (req, res, next) {
       // Check Errors
       const DATETIME = dateFormat(new Date(), "yyyy-mm-dd HH:MM:ss");

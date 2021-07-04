@@ -1675,8 +1675,9 @@ module.exports = {
   programGovernance: async function (req, res) {
     const DATETIME = dateFormat(new Date(), 'yyyy-mm-dd HH:MM:ss');
     try {
-      var portfolio = ObjectId(req.params.id);
-      var allPrograms = await programModel.find({ portfolio }, { _id: 1, name: 1 }).lean();
+      // var portfolio = ObjectId(req.params.id);
+      var manager = ObjectId(req.params.id);
+      var allPrograms = await programModel.find({ manager }, { _id: 1, name: 1 }).lean();
       var programs = allPrograms.map((d) => d._id);
 
       let allProjects = await projectModel.find({ program: { $in: programs } }, { _id: 1, name: 1, program: 1 }).populate('program', 'name').lean();

@@ -36,6 +36,6 @@ router.delete("/:id", programValidator.programId,programController.remove);
  * GET program By profile ID
  */
 router.get("/byPortfolio/:id", programValidator.portfolioId, programController.showByPortfolioId);
-
+router.get("/byUser/:id", programController.showByUserId);
 
 module.exports = router;
