@@ -2,24 +2,25 @@ var mongoose = require("mongoose");
 var schema = mongoose.Schema;
 var TaskPlannedResourceBaseModel = require("./taskPlannedResourceBaseModel");
 
+
+
+
 var taskPlannedResourceSchema = new schema({
    resource: {
       type: mongoose.Schema.ObjectId,
-      ref: "Resource",
-      // required: true
+      ref: "Resource"
    },
    resourceType: {
       type: mongoose.Schema.ObjectId,
-      ref: "ResourceType",
-      // required: true
+      ref: "ResourceType"
    },
    allocation: {
       type: Number,
       default: 1
    },
    external: {
-     type: Boolean,
-     default: false
+      type: Boolean,
+      default: false
    },
    plannedStartDate: {
       type: Date,

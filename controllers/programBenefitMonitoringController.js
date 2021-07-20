@@ -152,7 +152,6 @@ module.exports = {
     try {
       const DATETIME = dateFormat(new Date(), "yyyy-mm-dd HH:MM:ss");
       var programBenefitMonitoring = new programBenefitMonitoringModel({
-
         benefit: req.body.benefit,
         benefitFrom: req.body.benefitFrom,
         benefitDuration: req.body.benefitDuration,

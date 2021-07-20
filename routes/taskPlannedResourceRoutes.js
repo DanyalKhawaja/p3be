@@ -35,7 +35,8 @@ router.delete("/:id", taskPlannedResourceController.remove);
  */
 router.get("/byTaskIdAndProjectId/:taskId/:projectId", taskPlannedResourceController.showByTaskIdProjectId);
 router.get("/byProject/:projectId", taskPlannedResourceController.showByProjectId);
-
+router.get("/byProject2/:projectId", taskPlannedResourceController.showByProjectId2);
+router.get("/byProject3/:projectId", taskPlannedResourceController.showByProjectId3);
 /*
  * GET First Name By ID
  */

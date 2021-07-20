@@ -203,7 +203,7 @@ module.exports = {
         log.write("INFO", LOGMESSAGE);
         return res.json({ success: true, data: project });
         // return res.json(project);
-      }).populate('manager', 'username');
+      }).populate('manager', 'username').populate('currency','symbol');
     } catch (error) {
       const LOGMESSAGE = DATETIME + "|" + error.message;
       log.write("ERROR", LOGMESSAGE);

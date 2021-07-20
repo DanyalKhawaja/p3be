@@ -51,7 +51,7 @@ router.get("/forecastDashboard/:id", taskController.forecastDashboardByProjectId
 router.get("/kpiDashboard/:id", taskController.kpiDashboardByProjectId);
 router.get("/openByProjectId/:id", taskController.openByProjectId);
 router.get("/workedByProjectId/:id", taskController.workedByProjectId);
-
+router.get("/workpackagesByProjectId/:id", taskController.workpackagesByProjectId);
 router.put("/cron/:id", taskController.markMonitorings);
 router.get("/dashboardByProgram/:id", taskController.dashboardByProgramId);
 router.get("/dashboardByPortfolio/:id", taskController.dashboardByPortfolioId);

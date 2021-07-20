@@ -121,7 +121,70 @@ module.exports = {
       return res.status(500).json({ success: false, msg: "Error when getting taskPlannedResource.", error: error });
     }
   },
+  showByProjectId2: function (req, res) {
+    try {
+      const DATETIME = dateFormat(new Date(), "yyyy-mm-dd HH:MM:ss");
+      var projectId = req.params.projectId;
 
+      taskPlannedResourceBaseModel.find({
+        project: projectId
+      }, function (err, taskPlannedResource) {
+        if (err) {
+          const LOGMESSAGE = DATETIME + "|" + err.message;
+          log.write("ERROR", LOGMESSAGE);
+          return res.status(500).json({
+            success: false,
+            msg: "Error when getting taskPlannedResource." + projectId,
+            error: err
+          });
+        }
+        if (!taskPlannedResource) {
+          const LOGMESSAGE = DATETIME + "|NO Such taskPlannedResource of project:" + projectId;
+          log.write("ERROR", LOGMESSAGE);
+          return res.status(404).json({ success: false, msg: "No such taskPlannedResource" });
+        }
+        const LOGMESSAGE = DATETIME + "|taskPlannedResource found of project:" + projectId;
+        log.write("INFO", LOGMESSAGE);
+        return res.json({ success: true, data: taskPlannedResource });
+      }).populate("resourceType", "name").populate("resource", "resourceName");
+    } catch (error) {
+      const LOGMESSAGE = DATETIME + "|" + error.message;
+      log.write("ERROR", LOGMESSAGE);
+      return res.status(500).json({ success: false, msg: "Error when getting taskPlannedResource.", error: error });
+    }
+  },
+  showByProjectId3: function (req, res) {
+    try {
+      const DATETIME = dateFormat(new Date(), "yyyy-mm-dd HH:MM:ss");
+      var projectId = req.params.projectId;
+
+      taskPlannedResourceBaseModel.find({
+        project: projectId
+      }, function (err, taskPlannedResource) {
+        if (err) {
+          const LOGMESSAGE = DATETIME + "|" + err.message;
+          log.write("ERROR", LOGMESSAGE);
+          return res.status(500).json({
+            success: false,
+            msg: "Error when getting taskPlannedResource." + projectId,
+            error: err
+          });
+        }
+        if (!taskPlannedResource) {
+          const LOGMESSAGE = DATETIME + "|NO Such taskPlannedResource of project:" + projectId;
+          log.write("ERROR", LOGMESSAGE);
+          return res.status(404).json({ success: false, msg: "No such taskPlannedResource" });
+        }
+        const LOGMESSAGE = DATETIME + "|taskPlannedResource found of project:" + projectId;
+        log.write("INFO", LOGMESSAGE);
+        return res.json({ success: true, data: taskPlannedResource });
+      }).populate("task", ['actualStartDate','lastMonitoredOn']).populate("resource", "resourceName");
+    } catch (error) {
+      const LOGMESSAGE = DATETIME + "|" + error.message;
+      log.write("ERROR", LOGMESSAGE);
+      return res.status(500).json({ success: false, msg: "Error when getting taskPlannedResource.", error: error });
+    }
+  },
   showTaskCost: function (req, res) {
     try {
       const DATETIME = dateFormat(new Date(), "yyyy-mm-dd HH:MM:ss");
