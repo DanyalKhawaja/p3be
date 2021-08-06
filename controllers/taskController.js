@@ -201,7 +201,7 @@ module.exports = {
       respondWithError(res, error, 'Error when getting task.');
     }
   },
-  dashboardByProgramId: async function (req, res) {
+  dashboardByProgramIdORG: async function (req, res) {
     const DATETIME = dateFormat(new Date(), 'yyyy-mm-dd HH:MM:ss');
     try {
       var program = ObjectId(req.params.id);
@@ -564,6 +564,417 @@ module.exports = {
         allWPTasks
       };
       return res.json({ success: true, data: data });
+    } catch (error) {
+      console.log(error)
+      respondWithError(res, error, 'Error when getting task.');
+    }
+  },
+  kpiByProgramId: async function (req, res) {
+    const DATETIME = dateFormat(new Date(), 'yyyy-mm-dd HH:MM:ss');
+    try {
+      var program = ObjectId(req.params.id);
+      var programId = program.toString();
+      var projects = (await projectModel.find({ program }, { _id: 1 }).lean()).map((d) => d._id);
+
+      let programData = await programModel.findById(programId);
+      let programSchedule = {
+        [programId]: {
+          programActualDays: businessDays(new Date(programData.startDate), new Date()),
+          programPlannedDays: businessDays(new Date(programData.startDate), new Date(programData.endDate))
+        }
+      }
+
+      let monthwisePlanned = await taskModel.aggregate([{
+        $match: { project: { $in: projects }, workPackage: true }
+      },
+      {
+        $group: {
+          _id: { $dateToString: { format: "%Y-%m", date: "$plannedEndDate" } },
+          firstDate: { $first: "$plannedEndDate" },
+          lastDate: { $last: "$plannedEndDate" },
+          plannedCost: { $sum: "$plannedCost" },
+          plannedCompletion: { $sum: "$weightage" },
+          actualCompletion: { $sum: { $divide: [{ $multiply: ["$weightage", "$completed"] }, 100] } },
+        }
+      },
+      {
+        $sort: { "_id": 1 }
+      }]);
+
+
+      let monthwiseActual = await monitoringModel.aggregate([{
+        $match: { project: { $in: projects } }
+      }, {
+        $group: {
+          _id: { $dateToString: { format: "%Y-%m", date: "$monitoringDate" } },
+          actualCost: { $sum: "$actualCost" },
+          lastDate: { $last: "$monitoringDate" },
+        }
+      },
+      {
+        $sort: { "_id": 1 }
+      }]);
+      let config = {
+        plannedCost: 0,
+        plannedCompletion: 0,
+        actualCompletion: 0,
+        actualCost: 0,
+        cumulativePlannedCost: 0,
+        cumulativePlannedCompletion: 0,
+        cumulativeActualCompletion: 0,
+        cumulativeActualCost: 0,
+        cumulativePlannedValue: 0,
+        cumulativeEarnedValue: 0
+      };
+
+      let monthList = createMonthlyArray(monthwisePlanned[0].firstDate, undefined, config)
+      let monthwiseData = _.values(_.merge(_.keyBy(monthList, '_id'), _.keyBy(monthwisePlanned, '_id'), _.keyBy(monthwiseActual, '_id')));
+      monthwiseData = monthwiseData.sort((a, b) => new Date(a._id) < new Date(b._id) ? -1 : 1)
+
+      // monthwiseData[monthwiseActual.length - 1].isLastMonitoring = true;
+      monthwiseData.forEach((doc, i, docs) => {
+        if (!doc.plannedCost) doc.plannedCost = 0;
+        if (!doc.plannedCompletion) doc.plannedCompletion = 0;
+        if (!doc.cumulativePlannedCost) doc.cumulativePlannedCost = 0;
+        if (!doc.actualCompletion) doc.actualCompletion = 0;
+        if (!doc.cumulativeActualCompletion) doc.cumulativeActualCompletion = 0;
+        let previous = docs[i - 1];
+        doc.cumulativePlannedCost = previous ? doc.plannedCost + previous.cumulativePlannedCost : doc.plannedCost;
+        doc.cumulativePlannedCompletion = previous ? doc.plannedCompletion + previous.cumulativePlannedCompletion : doc.plannedCompletion;
+        doc.cumulativeActualCompletion = previous ? doc.actualCompletion + previous.cumulativeActualCompletion : doc.actualCompletion;
+        doc.cumulativeActualCost = previous ? (doc.actualCost ? doc.actualCost : 0) + previous.cumulativeActualCost : doc.actualCost;
+      });
+
+      monthwiseData.forEach((doc, i, docs) => {
+        let previous = docs[i - 1], final = docs[docs.length - 1];
+        if (!doc.cumulativePlannedValue) doc.cumulativePlannedValue = 0;
+        if (!doc.cumulativeEarnedValue) doc.cumulativeEarnedValue = 0;
+
+        doc.cumulativePlannedValue = previous ? previous.cumulativePlannedValue + (doc.plannedCompletion * final.cumulativePlannedCost) : doc.plannedCompletion * (final.cumulativePlannedCost ? final.cumulativePlannedCost : 0);
+        doc.cumulativeEarnedValue = previous ? previous.cumulativeEarnedValue + (doc.actualCompletion * final.cumulativePlannedCost) : doc.actualCompletion * (final.cumulativePlannedCost ? final.cumulativePlannedCost : 0);
+      });
+
+      let D = [], A = [monthwiseData[0].cumulativeActualCost], T = [0];
+
+      monthwiseData.forEach((doc, i, docs) => {
+        D.push(doc.actualCost);
+        doc.FV = i > 0 ? docs[i - 1].FV + getFt(i, D, A, T) : 0;
+        // 
+      });
+
+      let currentMonthRow = monthwiseData.find(d => {
+        let y = startOfMonth(new Date(d._id)).valueOf() == startOfMonth(new Date()).valueOf()
+        return y;
+      });
+
+      let actualCost = currentMonthRow ? currentMonthRow.cumulativeActualCost : 0;
+      let currentMonthActualCost = currentMonthRow ? currentMonthRow.actualCost : 0;
+      let currentMonthPlannedCost = currentMonthRow ? currentMonthRow.plannedCost : 0;
+      let budAtComp = monthwiseData[monthwiseData.length - 1].cumulativePlannedCost;
+
+      let totalPlannedDays = programSchedule[programId].programPlannedDays;
+      let actualDaysSinceExecution = programSchedule[programId].programActualDays;
+
+
+      let performanceData = {
+        PerformanceCostData: {
+          ActualCost: currentMonthActualCost,
+          AverageMonthlyCost: currentMonthPlannedCost,
+          PurpleRange: [0, currentMonthPlannedCost],
+          YellowRange: [currentMonthPlannedCost, currentMonthPlannedCost * 1.25],
+          RedRange: [currentMonthPlannedCost * 1.25, currentMonthPlannedCost * 1.5]
+        },
+        PerformanceBudgetData: {
+          TotalEstimatedBudget: budAtComp,
+          TotalActualCost: actualCost,
+          PurpleRange: [0, budAtComp],
+          YellowRange: [budAtComp, budAtComp + 0],
+          RedRange: [budAtComp + 0, (budAtComp + 0) * 1.25]
+        },
+        PerformanceScheduleData: {
+          TotalPlannedDays: totalPlannedDays,
+          TotalDaysSpent: actualDaysSinceExecution,
+          PurpleRange: [0, totalPlannedDays],
+          YellowRange: [totalPlannedDays, totalPlannedDays * 1.25],
+          RedRange: [totalPlannedDays * 1.25, totalPlannedDays * 1.75]
+        }
+      };
+
+      return res.json({ success: true, performanceData });
+    } catch (error) {
+      console.log(error)
+      respondWithError(res, error, 'Error when getting task.');
+    }
+  },
+  kpiByPortfolioId1: async function (req, res) {
+    const DATETIME = dateFormat(new Date(), 'yyyy-mm-dd HH:MM:ss');
+    try {
+      var portfolio = ObjectId(req.params.id);
+      var programs = (await programModel.find({ portfolio }, { _id: 1 }).lean()).map((d) => d._id);
+      var portfolioId = portfolio.toString();
+      var projects = (await projectModel.find({ program: { $in: programs } }, { _id: 1 }).lean()).map((d) => d._id);
+
+      let portfolioData = await portfolioModel.findById(portfolioId);
+      let portfolioSchedule = {
+        [portfolioId]: {
+          portfolioActualDays: businessDays(new Date(portfolioData.startDate), new Date()),
+          portfolioPlannedDays: businessDays(new Date(portfolioData.startDate), new Date(portfolioData.endDate))
+        }
+      }
+
+      let monthwisePlanned = await taskModel.aggregate([{
+        $match: { project: { $in: projects }, workPackage: true }
+      },
+      {
+        $group: {
+          _id: { $dateToString: { format: "%Y-%m", date: "$plannedEndDate" } },
+          firstDate: { $first: "$plannedEndDate" },
+          lastDate: { $last: "$plannedEndDate" },
+          plannedCost: { $sum: "$plannedCost" },
+          plannedCompletion: { $sum: "$weightage" },
+          actualCompletion: { $sum: { $divide: [{ $multiply: ["$weightage", "$completed"] }, 100] } },
+        }
+      },
+      {
+        $sort: { "_id": 1 }
+      }]);
+
+
+      let monthwiseActual = await monitoringModel.aggregate([{
+        $match: { project: { $in: projects } }
+      }, {
+        $group: {
+          _id: { $dateToString: { format: "%Y-%m", date: "$monitoringDate" } },
+          actualCost: { $sum: "$actualCost" },
+          lastDate: { $last: "$monitoringDate" },
+        }
+      },
+      {
+        $sort: { "_id": 1 }
+      }]);
+      let config = {
+        plannedCost: 0,
+        plannedCompletion: 0,
+        actualCompletion: 0,
+        actualCost: 0,
+        cumulativePlannedCost: 0,
+        cumulativePlannedCompletion: 0,
+        cumulativeActualCompletion: 0,
+        cumulativeActualCost: 0,
+        cumulativePlannedValue: 0,
+        cumulativeEarnedValue: 0
+      };
+
+      let monthList = createMonthlyArray(monthwisePlanned[0].firstDate, undefined, config)
+      let monthwiseData = _.values(_.merge(_.keyBy(monthList, '_id'), _.keyBy(monthwisePlanned, '_id'), _.keyBy(monthwiseActual, '_id')));
+      monthwiseData = monthwiseData.sort((a, b) => new Date(a._id) < new Date(b._id) ? -1 : 1)
+
+      monthwiseData[monthwiseActual.length - 1].isLastMonitoring = true;
+      monthwiseData.forEach((doc, i, docs) => {
+        if (!doc.plannedCost) doc.plannedCost = 0;
+        if (!doc.plannedCompletion) doc.plannedCompletion = 0;
+        if (!doc.cumulativePlannedCost) doc.cumulativePlannedCost = 0;
+        if (!doc.actualCompletion) doc.actualCompletion = 0;
+        if (!doc.cumulativeActualCompletion) doc.cumulativeActualCompletion = 0;
+        let previous = docs[i - 1];
+        doc.cumulativePlannedCost = previous ? doc.plannedCost + previous.cumulativePlannedCost : doc.plannedCost;
+        doc.cumulativePlannedCompletion = previous ? doc.plannedCompletion + previous.cumulativePlannedCompletion : doc.plannedCompletion;
+        doc.cumulativeActualCompletion = previous ? doc.actualCompletion + previous.cumulativeActualCompletion : doc.actualCompletion;
+        doc.cumulativeActualCost = previous ? (doc.actualCost ? doc.actualCost : 0) + previous.cumulativeActualCost : doc.actualCost;
+      });
+
+      monthwiseData.forEach((doc, i, docs) => {
+        let previous = docs[i - 1], final = docs[docs.length - 1];
+        if (!doc.cumulativePlannedValue) doc.cumulativePlannedValue = 0;
+        if (!doc.cumulativeEarnedValue) doc.cumulativeEarnedValue = 0;
+
+        doc.cumulativePlannedValue = previous ? previous.cumulativePlannedValue + (doc.plannedCompletion * final.cumulativePlannedCost) : doc.plannedCompletion * (final.cumulativePlannedCost ? final.cumulativePlannedCost : 0);
+        doc.cumulativeEarnedValue = previous ? previous.cumulativeEarnedValue + (doc.actualCompletion * final.cumulativePlannedCost) : doc.actualCompletion * (final.cumulativePlannedCost ? final.cumulativePlannedCost : 0);
+      });
+
+      let D = [], A = [monthwiseData[0].cumulativeActualCost], T = [0];
+
+      monthwiseData.forEach((doc, i, docs) => {
+        D.push(doc.actualCost);
+        doc.FV = i > 0 ? docs[i - 1].FV + getFt(i, D, A, T) : 0;
+        // 
+      });
+
+      let currentMonthRow = monthwiseData.find(d => {
+        let y = startOfMonth(new Date(d._id)).valueOf() == startOfMonth(new Date()).valueOf()
+        return y;
+      });
+
+      let actualCost = currentMonthRow ? currentMonthRow.cumulativeActualCost : 0;
+      let currentMonthActualCost = currentMonthRow ? currentMonthRow.actualCost : 0;
+      let currentMonthPlannedCost = currentMonthRow ? currentMonthRow.plannedCost : 0;
+      let budAtComp = monthwiseData[monthwiseData.length - 1].cumulativePlannedCost;
+
+      let totalPlannedDays = portfolioSchedule[portfolioId].portfolio;
+      let actualDaysSinceExecution = portfolioSchedule[portfolioId].portfolioActualDays;
+
+
+      let performanceData = {
+        PerformanceCostData: {
+          ActualCost: currentMonthActualCost,
+          AverageMonthlyCost: currentMonthPlannedCost,
+          PurpleRange: [0, currentMonthPlannedCost],
+          YellowRange: [currentMonthPlannedCost, currentMonthPlannedCost * 1.25],
+          RedRange: [currentMonthPlannedCost * 1.25, currentMonthPlannedCost * 1.5]
+        },
+        PerformanceBudgetData: {
+          TotalEstimatedBudget: budAtComp,
+          TotalActualCost: actualCost,
+          PurpleRange: [0, budAtComp],
+          YellowRange: [budAtComp, budAtComp + 0],
+          RedRange: [budAtComp + 0, (budAtComp + 0) * 1.25]
+        },
+        PerformanceScheduleData: {
+          TotalPlannedDays: totalPlannedDays,
+          TotalDaysSpent: actualDaysSinceExecution,
+          PurpleRange: [0, totalPlannedDays],
+          YellowRange: [totalPlannedDays, totalPlannedDays * 1.25],
+          RedRange: [totalPlannedDays * 1.25, totalPlannedDays * 1.75]
+        }
+      };
+
+      return res.json({ success: true, performanceData });
+    } catch (error) {
+      console.log(error)
+      respondWithError(res, error, 'Error when getting task.');
+    }
+  },
+  kpiByPortfolioId: async function (req, res) {
+    const DATETIME = dateFormat(new Date(), 'yyyy-mm-dd HH:MM:ss');
+    try {
+      let portfolioId = req.params.id;
+      let { programs } = await portfolioModel.findById(portfolioId).lean();
+      var projects = (await projectModel.find({ program: { $in: programs } }, { _id: 1 }).lean()).map((d) => d._id);
+      let portfolioData = await portfolioModel.findById(portfolioId).lean();
+      let portfolioSchedule = {
+        [portfolioId]: {
+          portfolioActualDays: businessDays(new Date(portfolioData.startDate), new Date()),
+          portfolioPlannedDays: businessDays(new Date(portfolioData.startDate), new Date(portfolioData.endDate))
+        }
+      }
+
+      let monthwisePlanned = await taskModel.aggregate([{
+        $match: { project: { $in: projects }, workPackage: true, plannedStartDate: { $gte: new Date(portfolioData.startDate) }, plannedEndDate: { $lte: new Date(portfolioData.endDate) } }
+      },
+      {
+        $group: {
+          _id: { $dateToString: { format: "%Y-%m", date: "$plannedEndDate" } },
+          firstDate: { $first: "$plannedEndDate" },
+          lastDate: { $last: "$plannedEndDate" },
+          plannedCost: { $sum: "$plannedCost" },
+          plannedCompletion: { $sum: "$weightage" },
+          actualCompletion: { $sum: { $divide: [{ $multiply: ["$weightage", "$completed"] }, 100] } },
+        }
+      },
+      {
+        $sort: { "_id": 1 }
+      }]);
+
+
+      let monthwiseActual = await monitoringModel.aggregate([{
+        $match: { project: { $in: projects } }
+      }, {
+        $group: {
+          _id: { $dateToString: { format: "%Y-%m", date: "$monitoringDate" } },
+          actualCost: { $sum: "$actualCost" },
+          lastDate: { $last: "$monitoringDate" },
+        }
+      },
+      {
+        $sort: { "_id": 1 }
+      }]);
+      let config = {
+        plannedCost: 0,
+        plannedCompletion: 0,
+        actualCompletion: 0,
+        actualCost: 0,
+        cumulativePlannedCost: 0,
+        cumulativePlannedCompletion: 0,
+        cumulativeActualCompletion: 0,
+        cumulativeActualCost: 0,
+        cumulativePlannedValue: 0,
+        cumulativeEarnedValue: 0
+      };
+
+      let monthList = createMonthlyArray(monthwisePlanned[0].firstDate, undefined, config)
+      let monthwiseData = _.values(_.merge(_.keyBy(monthList, '_id'), _.keyBy(monthwisePlanned, '_id'), _.keyBy(monthwiseActual, '_id')));
+      monthwiseData = monthwiseData.sort((a, b) => new Date(a._id) < new Date(b._id) ? -1 : 1)
+
+      // monthwiseData[monthwiseActual.length - 1].isLastMonitoring = true;
+      monthwiseData.forEach((doc, i, docs) => {
+        if (!doc.plannedCost) doc.plannedCost = 0;
+        if (!doc.plannedCompletion) doc.plannedCompletion = 0;
+        if (!doc.cumulativePlannedCost) doc.cumulativePlannedCost = 0;
+        if (!doc.actualCompletion) doc.actualCompletion = 0;
+        if (!doc.cumulativeActualCompletion) doc.cumulativeActualCompletion = 0;
+        let previous = docs[i - 1];
+        doc.cumulativePlannedCost = previous ? doc.plannedCost + previous.cumulativePlannedCost : doc.plannedCost;
+        doc.cumulativePlannedCompletion = previous ? doc.plannedCompletion + previous.cumulativePlannedCompletion : doc.plannedCompletion;
+        doc.cumulativeActualCompletion = previous ? doc.actualCompletion + previous.cumulativeActualCompletion : doc.actualCompletion;
+        doc.cumulativeActualCost = previous ? (doc.actualCost ? doc.actualCost : 0) + previous.cumulativeActualCost : doc.actualCost;
+      });
+
+      monthwiseData.forEach((doc, i, docs) => {
+        let previous = docs[i - 1], final = docs[docs.length - 1];
+        if (!doc.cumulativePlannedValue) doc.cumulativePlannedValue = 0;
+        if (!doc.cumulativeEarnedValue) doc.cumulativeEarnedValue = 0;
+
+        doc.cumulativePlannedValue = previous ? previous.cumulativePlannedValue + (doc.plannedCompletion * final.cumulativePlannedCost) : doc.plannedCompletion * (final.cumulativePlannedCost ? final.cumulativePlannedCost : 0);
+        doc.cumulativeEarnedValue = previous ? previous.cumulativeEarnedValue + (doc.actualCompletion * final.cumulativePlannedCost) : doc.actualCompletion * (final.cumulativePlannedCost ? final.cumulativePlannedCost : 0);
+      });
+
+      let D = [], A = [monthwiseData[0].cumulativeActualCost], T = [0];
+
+      monthwiseData.forEach((doc, i, docs) => {
+        D.push(doc.actualCost);
+        doc.FV = i > 0 ? docs[i - 1].FV + getFt(i, D, A, T) : 0;
+        // 
+      });
+
+      let currentMonthRow = monthwiseData.find(d => {
+        let y = startOfMonth(new Date(d._id)).valueOf() == startOfMonth(new Date()).valueOf()
+        return y;
+      });
+
+      let actualCost = currentMonthRow ? currentMonthRow.cumulativeActualCost : 0;
+      let currentMonthActualCost = currentMonthRow ? currentMonthRow.actualCost : 0;
+      let currentMonthPlannedCost = currentMonthRow ? currentMonthRow.plannedCost : 0;
+      let budAtComp = monthwiseData[monthwiseData.length - 1].cumulativePlannedCost;
+
+      let totalPlannedDays = portfolioSchedule[portfolioId].portfolio;
+      let actualDaysSinceExecution = portfolioSchedule[portfolioId].portfolioActualDays;
+
+
+      let performanceData = {
+        PerformanceCostData: {
+          ActualCost: currentMonthActualCost,
+          AverageMonthlyCost: currentMonthPlannedCost,
+          PurpleRange: [0, currentMonthPlannedCost],
+          YellowRange: [currentMonthPlannedCost, currentMonthPlannedCost * 1.25],
+          RedRange: [currentMonthPlannedCost * 1.25, currentMonthPlannedCost * 1.5]
+        },
+        PerformanceBudgetData: {
+          TotalEstimatedBudget: budAtComp,
+          TotalActualCost: actualCost,
+          PurpleRange: [0, budAtComp],
+          YellowRange: [budAtComp, budAtComp + 0],
+          RedRange: [budAtComp + 0, (budAtComp + 0) * 1.25]
+        },
+        PerformanceScheduleData: {
+          TotalPlannedDays: totalPlannedDays,
+          TotalDaysSpent: actualDaysSinceExecution,
+          PurpleRange: [0, totalPlannedDays],
+          YellowRange: [totalPlannedDays, totalPlannedDays * 1.25],
+          RedRange: [totalPlannedDays * 1.25, totalPlannedDays * 1.75]
+        }
+      };
+
+      return res.json({ success: true, performanceData });
     } catch (error) {
       console.log(error)
       respondWithError(res, error, 'Error when getting task.');
@@ -1493,7 +1904,7 @@ module.exports = {
       respondWithError(res, error, 'Error when getting task.');
     }
   },
-  portfolioGovernance: async function (req, res) {
+  portfolioGovernanceold: async function (req, res) {
     const DATETIME = dateFormat(new Date(), 'yyyy-mm-dd HH:MM:ss');
     try {
       var allPortfolios = await portfolioModel.find({}, { _id: 1, name: 1 }).lean();
@@ -1703,7 +2114,840 @@ module.exports = {
       respondWithError(res, error, 'Error when getting task.');
     }
   },
+  portfolioGovernance: async function (req, res) {
+    const DATETIME = dateFormat(new Date(), 'yyyy-mm-dd HH:MM:ss');
+    try {
+      var manager = ObjectId(req.params.id);
+      var rawList = await portfolioModel.find({}).lean();
+      var ids = rawList.map(d => ObjectId(d._id));
+      let subList = await programModel.find({ portfolio: { $in: ids } }, { _id: 1, name: 1 }).lean();
+      let programs = subList.map(d => ObjectId(d._id));
+      var list = rawList.reduce((obj, row) => {
+        obj[row._id.toString()] = row.name;
+        return obj;
+      }, {});
+
+      let mapper = (obj, row) => {
+        let portfolio = row._id.portfolio.toString();
+        if (!obj[portfolio]) obj[portfolio] = {};
+        obj[portfolio][row._id.program.toString()] = { ...row };
+        return obj;
+      };
+
+      let actualResourceBreakup = (await taskUtilizedResourceModel.aggregate([
+        { $lookup: { from: 'projects', localField: 'project', foreignField: '_id', as: 'Project' } },
+        { $unwind: { path: '$Project', preserveNullAndEmptyArrays: true } },
+        { $lookup: { from: 'programs', localField: 'Project.program', foreignField: '_id', as: 'Program' } },
+        { $unwind: { path: "$Program", preserveNullAndEmptyArrays: true } },
+        {
+          $match: {
+            $and: [
+
+              { "Program._id": { $in: programs } },
+              { $or: [{ boqType: '1' }, { __type: 'TaskUtilizedResource' }] }
+            ]
+          }
+        }, {
+          $group: {
+            _id: { portfolio: "$Program.portfolio", program: "$Project.program" },
+            total: { $sum: { $multiply: ['$actualCostPerUnit', '$quantity'] } }
+          }
+        }
+      ])).reduce(mapper, {});
+
+      let plannedResourceBreakup = (await taskPlannedResourceModel.aggregate([
+        { $lookup: { from: 'projects', localField: 'project', foreignField: '_id', as: 'Project' } },
+        { $unwind: { path: '$Project', preserveNullAndEmptyArrays: true } },
+        { $lookup: { from: 'programs', localField: 'Project.program', foreignField: '_id', as: 'Program' } },
+        { $unwind: { path: "$Program", preserveNullAndEmptyArrays: true } },
+        {
+          $match: {
+            $and: [
+              { "Program._id": { $in: programs } },
+              { $or: [{ boqType: '1' }, { __type: 'TaskPlannedResource' }] }
+            ]
+          }
+        },
+        {
+          $group: {
+            _id: { portfolio: "$Program.portfolio", program: "$Project.program" },
+            total: { $sum: { $multiply: ['$cost', '$quantity'] } }
+          }
+        }
+      ])).reduce(mapper, {});
+
+      let actualContractorEquipmentBreakup = (await taskUtilizedResourceModel.aggregate([
+        { $lookup: { from: 'projects', localField: 'project', foreignField: '_id', as: 'Project' } },
+        { $unwind: { path: '$Project', preserveNullAndEmptyArrays: true } },
+        { $lookup: { from: 'programs', localField: 'Project.program', foreignField: '_id', as: 'Program' } },
+        { $unwind: { path: "$Program", preserveNullAndEmptyArrays: true } },
+        {
+          $match: {
+            $and: [
+              { "Program._id": { $in: programs } },
+              { boqType: '3' }]
+          }
+        },
+        {
+          $group: {
+            _id: { portfolio: "$Program.portfolio", program: "$Project.program" },
+            total: { $sum: { $multiply: ['$actualCostPerUnit', '$quantity'] } }
+          }
+        }
+      ])).reduce(mapper, {});
+
+      let plannedContractorEquipmentBreakup = (await taskPlannedResourceModel.aggregate([
+        { $lookup: { from: 'projects', localField: 'project', foreignField: '_id', as: 'Project' } },
+        { $unwind: { path: '$Project', preserveNullAndEmptyArrays: true } },
+        { $lookup: { from: 'programs', localField: 'Project.program', foreignField: '_id', as: 'Program' } },
+        { $unwind: { path: "$Program", preserveNullAndEmptyArrays: true } },
+        {
+          $match: {
+            $and: [
+              { "Program._id": { $in: programs } },
+              { boqType: '3' }]
+          }
+        },
+        {
+          $group: {
+            _id: { portfolio: "$Program.portfolio", program: "$Project.program" },
+            total: { $sum: { $multiply: ['$cost', '$quantity'] } }
+          }
+        }
+      ])).reduce(mapper, {});
+      //
+      // let consumableMaterialBreakup =await taskPlannedResourceModel.aggregate([
+      //     {$lookup: { from: 'projects', localField: 'project', foreignField: '_id', as: 'Project'}},
+      //     {$unwind: {path: '$Project', preserveNullAndEmptyArrays: true}},
+      //     {$match: {
+      //             $and: [
+      //                 { "Program._id": { $in: programs } },
+      //                 { boqType: '4' }, { top3: { $ne: 0 } }]
+      //         }
+      //     },
+      //     {
+      //         $group: {
+      //             _id: { material: '$description' },
+      //             total: { $sum: { $multiply: ['$cost', '$quantity'] } }
+      //         }
+      //     }
+      // ]);
+
+
+      let costAndCompletion = (await taskModel.aggregate([
+        { $sort: { plannedStartDate: 1 } },
+        { $lookup: { from: "projects", localField: "project", foreignField: "_id", as: "Project" } },
+        { $unwind: { path: "$Project", preserveNullAndEmptyArrays: true } },
+        { $lookup: { from: 'programs', localField: 'Project.program', foreignField: '_id', as: 'Program' } },
+        { $unwind: { path: "$Program", preserveNullAndEmptyArrays: true } },
+        { $match: { "Program._id": { $in: programs }, workPackage: true } },
+        {
+          $group: {
+            _id: { portfolio: "$Program.portfolio", program: "$Project.program" },
+            actual: { $sum: '$actualCost' },
+            planned: { $sum: '$plannedCost' },
+            completion: { $sum: { $multiply: ['$weightage', '$completed'] } }
+          }
+        }
+      ])).reduce(mapper, {});
+
+      //     .reduce((obj, row) => {
+      //     obj[row._id.toString()] = { actual: row.actual ? row.actual : 0, completion: row.completion ? row.completion : 0 };
+      //     return obj;
+      // }, {});
+      // let costAndCompletion = Object.keys(projectsCost).reduce((obj, projectId) => {
+      //     let programId = programMap[projectId];
+      //     if (!obj[programId]) obj[programId] = {};
+      //     obj[programId][projectId] = { actual: _costAndCompletion[projectId] ? _costAndCompletion[projectId].actual : 0, planned: cost[projectId], completion: _costAndCompletion[projectId] ? _costAndCompletion[projectId].completion : 0 }
+      //     return obj;
+      // }, {});
+
+      /*
+      let schedule = (await projectModel.aggregate([
+        { $lookup: { from: 'programs', localField: 'program', foreignField: '_id', as: 'Program' } },
+        { $unwind: { path: "$Program", preserveNullAndEmptyArrays: true } },
+        { $match:  { "Program._id": { $in: programs } } },
+        {
+          $project: {
+            _portfolio: "$Program.portfolio",
+            _program: "$program",
+            plannedDays: { $divide: [{ $subtract: ["$expectedEndDate", "$expectedStartDate"] }, 864e5] },
+            actualDays: {
+              $divide: [{
+                $subtract: [new Date(), "$expectedStartDate"]
+              }, 864e5]
+            }
+          }
+        },
+        {
+          $group: {
+            _id: { portfolio: "$_portfolio", program: "$_program" },
+            actualDays: { $sum: "$actualDays" },
+            plannedDays: { $sum: "$plannedDays" }
+          }
+        }
+      ])).reduce(mapper, {});
+*/
+      let schedule = (await programModel.aggregate([
+        { $match: { _id: { $in: programs } } },
+        { $group: { _id: { portfolio: "$portfolio", program: "$_id" }, startDate: { $min: "$startDate" }, endDate: { $max: "$endDate" } } },
+        { $project: { plannedDays: { $dateDiff: { startDate: "$startDate", endDate: "$endDate", unit: "day" } }, actualDays: { $dateDiff: { startDate: "$startDate", endDate: new Date(), unit: "day" } } } }
+      ])).reduce(mapper, {});
+
+
+
+      // let programsSchedule = schedule.reduce((obj, row) => {
+      //     let prop = programMap[row._id.toString()];
+      //     if (!obj[prop]) obj[prop] = {};
+      //     obj[prop][row._id.toString()] = { projectActualDays: row.projectActualDays, projectPlannedDays: row.projectPlannedDays }
+      //     return obj;
+      // }, {});
+
+      let data = {
+        list,
+        subList,
+        costAndCompletion,
+        actualResourceBreakup,
+        plannedResourceBreakup,
+        actualContractorEquipmentBreakup,
+        plannedContractorEquipmentBreakup,
+        schedule
+      };
+      return res.json({ success: true, data });
+    } catch (error) {
+      console.log(error)
+      respondWithError(res, error, 'Error when getting task.');
+    }
+  },
+  portfolioGovernance1: async function (req, res) {
+    const DATETIME = dateFormat(new Date(), 'yyyy-mm-dd HH:MM:ss');
+    try {
+      var manager = ObjectId(req.params.id);
+      var rawList = await portfolioModel.find({ manager }, { _id: 1, name: 1 }).lean();
+      var ids = rawList.map(d => ObjectId(d._id));
+      var list = rawList.reduce((obj, row) => {
+        obj[row._id.toString()] = row.name;
+        return obj;
+      }, {});
+
+      let subList = await programModel.find({ portfolio: { $in: ids } }, { _id: 1, name: 1 }).lean();
+      // var ids = subList.map(d => ObjectId(d._id));
+
+      let mapper = (obj, row) => {
+        let portfolio = row._id.portfolio.toString();
+        if (!obj[portfolio]) obj[portfolio] = {};
+        obj[portfolio][row._id.program.toString()] = { ...row };
+        return obj;
+      };
+
+      let actualResourceBreakup = (await taskUtilizedResourceModel.aggregate([
+        { $lookup: { from: 'projects', localField: 'project', foreignField: '_id', as: 'Project' } },
+        { $unwind: { path: '$Project', preserveNullAndEmptyArrays: true } },
+        { $lookup: { from: 'programs', localField: 'Project.program', foreignField: '_id', as: 'Program' } },
+        { $unwind: { path: "$Program", preserveNullAndEmptyArrays: true } },
+        {
+          $match: {
+            $and: [
+
+              { "Program.portfolio": { $in: ids } },
+              { $or: [{ boqType: '1' }, { __type: 'TaskUtilizedResource' }] }
+            ]
+          }
+        }, {
+          $group: {
+            _id: { portfolio: "$Program.portfolio", program: "$Project.program" },
+            total: { $sum: { $multiply: ['$actualCostPerUnit', '$quantity'] } }
+          }
+        }
+      ])).reduce(mapper, {});
+
+      let plannedResourceBreakup = (await taskPlannedResourceModel.aggregate([
+        { $lookup: { from: 'projects', localField: 'project', foreignField: '_id', as: 'Project' } },
+        { $unwind: { path: '$Project', preserveNullAndEmptyArrays: true } },
+        { $lookup: { from: 'programs', localField: 'Project.program', foreignField: '_id', as: 'Program' } },
+        { $unwind: { path: "$Program", preserveNullAndEmptyArrays: true } },
+        {
+          $match: {
+            $and: [
+              { "Program.portfolio": { $in: ids } },
+              { $or: [{ boqType: '1' }, { __type: 'TaskPlannedResource' }] }
+            ]
+          }
+        },
+        {
+          $group: {
+            _id: { portfolio: "$Program.portfolio", program: "$Project.program" },
+            total: { $sum: { $multiply: ['$cost', '$quantity'] } }
+          }
+        }
+      ])).reduce(mapper, {});
+
+      let actualContractorEquipmentBreakup = (await taskUtilizedResourceModel.aggregate([
+        { $lookup: { from: 'projects', localField: 'project', foreignField: '_id', as: 'Project' } },
+        { $unwind: { path: '$Project', preserveNullAndEmptyArrays: true } },
+        { $lookup: { from: 'programs', localField: 'Project.program', foreignField: '_id', as: 'Program' } },
+        { $unwind: { path: "$Program", preserveNullAndEmptyArrays: true } },
+        {
+          $match: {
+            $and: [
+              { "Program.portfolio": { $in: ids } },
+              { boqType: '3' }]
+          }
+        },
+        {
+          $group: {
+            _id: { portfolio: "$Program.portfolio", program: "$Project.program" },
+            total: { $sum: { $multiply: ['$actualCostPerUnit', '$quantity'] } }
+          }
+        }
+      ])).reduce(mapper, {});
+
+      let plannedContractorEquipmentBreakup = (await taskPlannedResourceModel.aggregate([
+        { $lookup: { from: 'projects', localField: 'project', foreignField: '_id', as: 'Project' } },
+        { $unwind: { path: '$Project', preserveNullAndEmptyArrays: true } },
+        { $lookup: { from: 'programs', localField: 'Project.program', foreignField: '_id', as: 'Program' } },
+        { $unwind: { path: "$Program", preserveNullAndEmptyArrays: true } },
+        {
+          $match: {
+            $and: [
+              { "Program.portfolio": { $in: ids } },
+              { boqType: '3' }]
+          }
+        },
+        {
+          $group: {
+            _id: { portfolio: "$Program.portfolio", program: "$Project.program" },
+            total: { $sum: { $multiply: ['$cost', '$quantity'] } }
+          }
+        }
+      ])).reduce(mapper, {});
+      //
+      // let consumableMaterialBreakup =await taskPlannedResourceModel.aggregate([
+      //     {$lookup: { from: 'projects', localField: 'project', foreignField: '_id', as: 'Project'}},
+      //     {$unwind: {path: '$Project', preserveNullAndEmptyArrays: true}},
+      //     {$match: {
+      //             $and: [
+      //                 { "Project.program": { $in: programs } },
+      //                 { boqType: '4' }, { top3: { $ne: 0 } }]
+      //         }
+      //     },
+      //     {
+      //         $group: {
+      //             _id: { material: '$description' },
+      //             total: { $sum: { $multiply: ['$cost', '$quantity'] } }
+      //         }
+      //     }
+      // ]);
+
+
+      let costAndCompletion = (await taskModel.aggregate([
+        { $sort: { plannedStartDate: 1 } },
+        { $lookup: { from: "projects", localField: "project", foreignField: "_id", as: "Project" } },
+        { $unwind: { path: "$Project", preserveNullAndEmptyArrays: true } },
+        { $lookup: { from: 'programs', localField: 'Project.program', foreignField: '_id', as: 'Program' } },
+        { $unwind: { path: "$Program", preserveNullAndEmptyArrays: true } },
+        { $match: { "Program.portfolio": { $in: ids }, workPackage: true } },
+        {
+          $group: {
+            _id: { portfolio: "$Program.portfolio", program: "$Project.program" },
+            actual: { $sum: '$actualCost' },
+            planned: { $sum: '$plannedCost' },
+            completion: { $sum: { $multiply: ['$weightage', '$completed'] } }
+          }
+        }
+      ])).reduce(mapper, {});
+
+      //     .reduce((obj, row) => {
+      //     obj[row._id.toString()] = { actual: row.actual ? row.actual : 0, completion: row.completion ? row.completion : 0 };
+      //     return obj;
+      // }, {});
+      // let costAndCompletion = Object.keys(projectsCost).reduce((obj, projectId) => {
+      //     let programId = programMap[projectId];
+      //     if (!obj[programId]) obj[programId] = {};
+      //     obj[programId][projectId] = { actual: _costAndCompletion[projectId] ? _costAndCompletion[projectId].actual : 0, planned: cost[projectId], completion: _costAndCompletion[projectId] ? _costAndCompletion[projectId].completion : 0 }
+      //     return obj;
+      // }, {});
+
+      let schedule = (await projectModel.aggregate([
+        { $lookup: { from: 'programs', localField: 'program', foreignField: '_id', as: 'Program' } },
+        { $unwind: { path: "$Program", preserveNullAndEmptyArrays: true } },
+        { $match: { "Program.portfolio": { $in: ids } } },
+        {
+          $project: {
+            _portfolio: "$Program.portfolio",
+            _program: "$program",
+            plannedDays: { $divide: [{ $subtract: ["$expectedEndDate", "$expectedStartDate"] }, 864e5] },
+            actualDays: {
+              $divide: [{
+                $subtract: [new Date(), "$expectedStartDate"]
+              }, 864e5]
+            }
+          }
+        },
+        {
+          $group: {
+            _id: { portfolio: "$_portfolio", program: "$_program" },
+            actualDays: { $sum: "$actualDays" },
+            plannedDays: { $sum: "$plannedDays" }
+          }
+        }
+      ])).reduce(mapper, {});
+
+
+      // let programsSchedule = schedule.reduce((obj, row) => {
+      //     let prop = programMap[row._id.toString()];
+      //     if (!obj[prop]) obj[prop] = {};
+      //     obj[prop][row._id.toString()] = { projectActualDays: row.projectActualDays, projectPlannedDays: row.projectPlannedDays }
+      //     return obj;
+      // }, {});
+
+      let data = {
+        list,
+        subList,
+        costAndCompletion,
+        actualResourceBreakup,
+        plannedResourceBreakup,
+        actualContractorEquipmentBreakup,
+        plannedContractorEquipmentBreakup,
+        schedule
+      };
+      return res.json({ success: true, data });
+    } catch (error) {
+      console.log(error)
+      respondWithError(res, error, 'Error when getting task.');
+    }
+  },
+  portfolioGovernancerev: async function (req, res) {
+    const DATETIME = dateFormat(new Date(), 'yyyy-mm-dd HH:MM:ss');
+    try {
+      // var manager = ObjectId(req.params.id);
+
+      let portfolioId = req.params.id;
+      let { programs } = await portfolioModel.findById(portfolioId).lean();
+
+
+      // var rawList = await portfolioModel.find({ manager }, { _id: 1, name: 1 , programs: 1}).lean();
+      // var ids = rawList.reduce((a,d) => ([...a, ...d.programs ]),[]);
+      // var list = rawList.reduce((obj, row) => {
+      //   obj[row._id.toString()] = row.name;
+      //   return obj;
+      // }, {});
+
+      let subList = await programModel.find({ _id: { $in: programs } }, { _id: 1, name: 1 }).lean();
+      // var ids = subList.map(d => ObjectId(d._id));
+
+      let mapper = (obj, row) => {
+        let portfolio = row._id.portfolio.toString();
+        if (!obj[portfolio]) obj[portfolio] = {};
+        obj[portfolio][row._id.program.toString()] = { ...row };
+        return obj;
+      };
+
+      let actualResourceBreakup = (await taskUtilizedResourceModel.aggregate([
+        { $lookup: { from: 'projects', localField: 'project', foreignField: '_id', as: 'Project' } },
+        { $unwind: { path: '$Project', preserveNullAndEmptyArrays: true } },
+        { $lookup: { from: 'programs', localField: 'Project.program', foreignField: '_id', as: 'Program' } },
+        { $unwind: { path: "$Program", preserveNullAndEmptyArrays: true } },
+        {
+          $match: {
+            $and: [
+
+              { "Program._id": { $in: programs } },
+              { $or: [{ boqType: '1' }, { __type: 'TaskUtilizedResource' }] }
+            ]
+          }
+        }, {
+          $group: {
+            _id: "$Project.program",
+            total: { $sum: { $multiply: ['$actualCostPerUnit', '$quantity'] } }
+          }
+        }
+      ])).reduce(mapper, {});
+
+      let plannedResourceBreakup = (await taskPlannedResourceModel.aggregate([
+        { $lookup: { from: 'projects', localField: 'project', foreignField: '_id', as: 'Project' } },
+        { $unwind: { path: '$Project', preserveNullAndEmptyArrays: true } },
+        { $lookup: { from: 'programs', localField: 'Project.program', foreignField: '_id', as: 'Program' } },
+        { $unwind: { path: "$Program", preserveNullAndEmptyArrays: true } },
+        {
+          $match: {
+            $and: [
+              { "Program._id": { $in: programs } },
+              { $or: [{ boqType: '1' }, { __type: 'TaskPlannedResource' }] }
+            ]
+          }
+        },
+        {
+          $group: {
+            _id: "$Project.program",
+            total: { $sum: { $multiply: ['$cost', '$quantity'] } }
+          }
+        }
+      ])).reduce(mapper, {});
+
+      let actualContractorEquipmentBreakup = (await taskUtilizedResourceModel.aggregate([
+        { $lookup: { from: 'projects', localField: 'project', foreignField: '_id', as: 'Project' } },
+        { $unwind: { path: '$Project', preserveNullAndEmptyArrays: true } },
+        { $lookup: { from: 'programs', localField: 'Project.program', foreignField: '_id', as: 'Program' } },
+        { $unwind: { path: "$Program", preserveNullAndEmptyArrays: true } },
+        {
+          $match: {
+            $and: [
+              { "Program._id": { $in: programs } },
+              { boqType: '3' }]
+          }
+        },
+        {
+          $group: {
+            _id: { portfolio: "$Program.portfolio", program: "$Project.program" },
+            total: { $sum: { $multiply: ['$actualCostPerUnit', '$quantity'] } }
+          }
+        }
+      ])).reduce(mapper, {});
+
+      let plannedContractorEquipmentBreakup = (await taskPlannedResourceModel.aggregate([
+        { $lookup: { from: 'projects', localField: 'project', foreignField: '_id', as: 'Project' } },
+        { $unwind: { path: '$Project', preserveNullAndEmptyArrays: true } },
+        { $lookup: { from: 'programs', localField: 'Project.program', foreignField: '_id', as: 'Program' } },
+        { $unwind: { path: "$Program", preserveNullAndEmptyArrays: true } },
+        {
+          $match: {
+            $and: [
+              { "Program.portfolio": { $in: ids } },
+              { boqType: '3' }]
+          }
+        },
+        {
+          $group: {
+            _id: { portfolio: "$Program.portfolio", program: "$Project.program" },
+            total: { $sum: { $multiply: ['$cost', '$quantity'] } }
+          }
+        }
+      ])).reduce(mapper, {});
+      //
+      // let consumableMaterialBreakup =await taskPlannedResourceModel.aggregate([
+      //     {$lookup: { from: 'projects', localField: 'project', foreignField: '_id', as: 'Project'}},
+      //     {$unwind: {path: '$Project', preserveNullAndEmptyArrays: true}},
+      //     {$match: {
+      //             $and: [
+      //                 { "Project.program": { $in: programs } },
+      //                 { boqType: '4' }, { top3: { $ne: 0 } }]
+      //         }
+      //     },
+      //     {
+      //         $group: {
+      //             _id: { material: '$description' },
+      //             total: { $sum: { $multiply: ['$cost', '$quantity'] } }
+      //         }
+      //     }
+      // ]);
+
+
+      let costAndCompletion = (await taskModel.aggregate([
+        { $sort: { plannedStartDate: 1 } },
+        { $lookup: { from: "projects", localField: "project", foreignField: "_id", as: "Project" } },
+        { $unwind: { path: "$Project", preserveNullAndEmptyArrays: true } },
+        { $lookup: { from: 'programs', localField: 'Project.program', foreignField: '_id', as: 'Program' } },
+        { $unwind: { path: "$Program", preserveNullAndEmptyArrays: true } },
+        { $match: { "Program.portfolio": { $in: ids }, workPackage: true } },
+        {
+          $group: {
+            _id: { portfolio: "$Program.portfolio", program: "$Project.program" },
+            actual: { $sum: '$actualCost' },
+            planned: { $sum: '$plannedCost' },
+            completion: { $sum: { $multiply: ['$weightage', '$completed'] } }
+          }
+        }
+      ])).reduce(mapper, {});
+
+      //     .reduce((obj, row) => {
+      //     obj[row._id.toString()] = { actual: row.actual ? row.actual : 0, completion: row.completion ? row.completion : 0 };
+      //     return obj;
+      // }, {});
+      // let costAndCompletion = Object.keys(projectsCost).reduce((obj, projectId) => {
+      //     let programId = programMap[projectId];
+      //     if (!obj[programId]) obj[programId] = {};
+      //     obj[programId][projectId] = { actual: _costAndCompletion[projectId] ? _costAndCompletion[projectId].actual : 0, planned: cost[projectId], completion: _costAndCompletion[projectId] ? _costAndCompletion[projectId].completion : 0 }
+      //     return obj;
+      // }, {});
+
+      let schedule = (await projectModel.aggregate([
+        { $lookup: { from: 'programs', localField: 'program', foreignField: '_id', as: 'Program' } },
+        { $unwind: { path: "$Program", preserveNullAndEmptyArrays: true } },
+        { $match: { "Program.portfolio": { $in: ids } } },
+        {
+          $project: {
+            _portfolio: "$Program.portfolio",
+            _program: "$program",
+            plannedDays: { $divide: [{ $subtract: ["$expectedEndDate", "$expectedStartDate"] }, 864e5] },
+            actualDays: {
+              $divide: [{
+                $subtract: [new Date(), "$expectedStartDate"]
+              }, 864e5]
+            }
+          }
+        },
+        {
+          $group: {
+            _id: { portfolio: "$_portfolio", program: "$_program" },
+            actualDays: { $sum: "$actualDays" },
+            plannedDays: { $sum: "$plannedDays" }
+          }
+        }
+      ])).reduce(mapper, {});
+
+
+      // let programsSchedule = schedule.reduce((obj, row) => {
+      //     let prop = programMap[row._id.toString()];
+      //     if (!obj[prop]) obj[prop] = {};
+      //     obj[prop][row._id.toString()] = { projectActualDays: row.projectActualDays, projectPlannedDays: row.projectPlannedDays }
+      //     return obj;
+      // }, {});
+
+      let data = {
+        list,
+        subList,
+        costAndCompletion,
+        actualResourceBreakup,
+        plannedResourceBreakup,
+        actualContractorEquipmentBreakup,
+        plannedContractorEquipmentBreakup,
+        schedule
+      };
+      return res.json({ success: true, data });
+    } catch (error) {
+      console.log(error)
+      respondWithError(res, error, 'Error when getting task.');
+    }
+  },
   programGovernance: async function (req, res) {
+    const DATETIME = dateFormat(new Date(), 'yyyy-mm-dd HH:MM:ss');
+    try {
+      var manager = ObjectId(req.params.id);
+      var rawList = await programModel.find({ manager }, { _id: 1, name: 1 }).lean();
+      var ids = rawList.map(d => ObjectId(d._id));
+
+      let mapper = (obj, row) => {
+        let program = row._id.program.toString();
+        if (!obj[program]) obj[program] = {};
+        obj[program][row._id.project.toString()] = { ...row };
+        return obj;
+      };
+
+      let subList = (await projectModel.find({ program: { $in: ids } }, { _id: 1, name: 1 }).lean());
+      //   .reduce((obj, row) => {
+      //    obj[row._id.toString()] ={ ...row};
+      //     return obj;
+      // },{});
+
+      var list = rawList.reduce((obj, row) => {
+        obj[row._id.toString()] = row.name;
+        return obj;
+      }, {});
+
+
+
+      let actualResourceBreakup = (await taskUtilizedResourceModel.aggregate([
+        { $lookup: { from: 'projects', localField: 'project', foreignField: '_id', as: 'Project' } },
+        { $unwind: { path: '$Project', preserveNullAndEmptyArrays: true } },
+        {
+          $match: {
+            $and: [
+              { "Project.program": { $in: ids } },
+              { $or: [{ boqType: '1' }, { __type: 'TaskUtilizedResource' }] }
+            ]
+          }
+        }, {
+          $group: {
+            _id: { program: "$Project.program", project: "$project" },
+            total: { $sum: { $multiply: ['$actualCostPerUnit', '$quantity'] } }
+          }
+        }
+      ])).reduce(mapper, {});
+
+      let plannedResourceBreakup = (await taskPlannedResourceModel.aggregate([
+        { $lookup: { from: 'projects', localField: 'project', foreignField: '_id', as: 'Project' } },
+        { $unwind: { path: '$Project', preserveNullAndEmptyArrays: true } },
+        {
+          $match: {
+            $and: [
+              { "Project.program": { $in: ids } },
+              { $or: [{ boqType: '1' }, { __type: 'TaskPlannedResource' }] }
+            ]
+          }
+        },
+        {
+          $group: {
+            _id: { program: "$Project.program", project: "$project" },
+            total: { $sum: { $multiply: ['$cost', '$quantity'] } }
+          }
+        }
+      ])).reduce(mapper, {});
+      /*
+       let actualLaborBreakup = (await taskUtilizedResourceModel.aggregate([
+        {
+          $match: {
+            $and: [{ project: { $in: projects } }, { boqType: '1' }]
+          }
+        },
+        {
+          $group: {
+            _id: "$project",
+            total: { $sum: { $multiply: ['$actualCostPerUnit', '$quantity'] } }
+          }
+        }
+      ])).reduce((obj, row) => {
+        let prop = programMap[row._id.toString()];
+        if (!obj[prop]) obj[prop] = {};
+        obj[prop][row._id.toString()] = row.total;
+        return obj;
+      }, {});
+      let plannedLaborBreakup = (await taskPlannedResourceModel.aggregate([
+        {
+          $match: {
+            $and: [{ project: { $in: projects } }, { boqType: '1' }]
+          }
+        },
+        {
+          $group: {
+            _id: "$project",
+            total: { $sum: { $multiply: ['$cost', '$quantity'] } }
+          }
+        }
+      ])).reduce((obj, row) => {
+        let prop = programMap[row._id.toString()];
+        if (!obj[prop]) obj[prop] = {};
+        obj[prop][row._id.toString()] = row.total;
+        return obj;
+      }, {});
+      */
+      let actualContractorEquipmentBreakup = (await taskUtilizedResourceModel.aggregate([
+        { $lookup: { from: 'projects', localField: 'project', foreignField: '_id', as: 'Project' } },
+        { $unwind: { path: '$Project', preserveNullAndEmptyArrays: true } },
+        {
+          $match: {
+            $and: [
+              { "Project.program": { $in: ids } },
+
+              { boqType: '3' }]
+          }
+        },
+        {
+          $group: {
+            _id: { program: "$Project.program", project: "$project" },
+            total: { $sum: { $multiply: ['$actualCostPerUnit', '$quantity'] } }
+          }
+        }
+      ])).reduce(mapper, {});
+
+      let plannedContractorEquipmentBreakup = (await taskPlannedResourceModel.aggregate([
+        { $lookup: { from: 'projects', localField: 'project', foreignField: '_id', as: 'Project' } },
+        { $unwind: { path: '$Project', preserveNullAndEmptyArrays: true } },
+        {
+          $match: {
+            $and: [
+              { "Project.program": { $in: ids } },
+              { boqType: '3' }]
+          }
+        },
+        {
+          $group: {
+            _id: { program: "$Project.program", project: "$project" },
+            total: { $sum: { $multiply: ['$cost', '$quantity'] } }
+          }
+        }
+      ])).reduce(mapper, {});
+      //
+      // let consumableMaterialBreakup =await taskPlannedResourceModel.aggregate([
+      //     {$lookup: { from: 'projects', localField: 'project', foreignField: '_id', as: 'Project'}},
+      //     {$unwind: {path: '$Project', preserveNullAndEmptyArrays: true}},
+      //     {$match: {
+      //             $and: [
+      //                 { "Project.program": { $in: programs } },
+      //                 { boqType: '4' }, { top3: { $ne: 0 } }]
+      //         }
+      //     },
+      //     {
+      //         $group: {
+      //             _id: { material: '$description' },
+      //             total: { $sum: { $multiply: ['$cost', '$quantity'] } }
+      //         }
+      //     }
+      // ]);
+
+
+      let costAndCompletion = (await taskModel.aggregate([
+        { $sort: { plannedStartDate: 1 } },
+        { $lookup: { from: "projects", localField: "project", foreignField: "_id", as: "Project" } },
+        { $unwind: { path: "$Project", preserveNullAndEmptyArrays: true } },
+        { $match: { "Project.program": { $in: ids }, workPackage: true } },
+        {
+          $group: {
+            _id: { program: "$Project.program", project: "$project" },
+            actual: { $sum: '$actualCost' },
+            planned: { $sum: '$plannedCost' },
+            completion: { $sum: { $multiply: ['$weightage', '$completed'] } }
+          }
+        }
+      ])).reduce(mapper, {});
+
+      //     .reduce((obj, row) => {
+      //     obj[row._id.toString()] = { actual: row.actual ? row.actual : 0, completion: row.completion ? row.completion : 0 };
+      //     return obj;
+      // }, {});
+      // let costAndCompletion = Object.keys(projectsCost).reduce((obj, projectId) => {
+      //     let programId = programMap[projectId];
+      //     if (!obj[programId]) obj[programId] = {};
+      //     obj[programId][projectId] = { actual: _costAndCompletion[projectId] ? _costAndCompletion[projectId].actual : 0, planned: cost[projectId], completion: _costAndCompletion[projectId] ? _costAndCompletion[projectId].completion : 0 }
+      //     return obj;
+      // }, {});
+
+      let schedule = (await projectModel.aggregate([
+        { $match: { program: { $in: ids } } },
+        {
+          $project: {
+            _program: "$program",
+            plannedDays: { $divide: [{ $subtract: ["$expectedEndDate", "$expectedStartDate"] }, 864e5] },
+            actualDays: {
+              $divide: [{
+                $subtract: [new Date(), "$expectedStartDate"]
+              }, 864e5]
+            }
+          }
+        },
+        {
+          $group: {
+            _id: { program: "$_program", project: "$_id" },
+            actualDays: { $sum: "$actualDays" },
+            plannedDays: { $sum: "$plannedDays" }
+          }
+        }
+      ])).reduce(mapper, {});
+
+
+      // let programsSchedule = schedule.reduce((obj, row) => {
+      //     let prop = programMap[row._id.toString()];
+      //     if (!obj[prop]) obj[prop] = {};
+      //     obj[prop][row._id.toString()] = { projectActualDays: row.projectActualDays, projectPlannedDays: row.projectPlannedDays }
+      //     return obj;
+      // }, {});
+
+      let data = {
+        list,
+        subList,
+        costAndCompletion,
+        actualResourceBreakup,
+        plannedResourceBreakup,
+        actualContractorEquipmentBreakup,
+        plannedContractorEquipmentBreakup,
+        schedule
+      };
+      return res.json({ success: true, data });
+    } catch (error) {
+      respondWithError(res, error, 'Error when getting task.');
+    }
+  },
+  programGovernance1: async function (req, res) {
     const DATETIME = dateFormat(new Date(), 'yyyy-mm-dd HH:MM:ss');
     try {
       // var portfolio = ObjectId(req.params.id);
@@ -2141,10 +3385,13 @@ module.exports = {
       let earnedValue = 0;
       let actualCost = 0;
       if (datewiseBreakup.length > 0) {
-        plannedIndex = monitoringsCost.length > 0 ? datewiseBreakup.findIndex(breakup => breakup.date.toLocaleDateString() == monitoringsCost[lastMonitoringIndex]._id.toLocaleDateString()) : 0;
-        plannedValue = datewiseBreakup[plannedIndex].cumulativePlannedCost;
+        // plannedIndex = monitoringsCost.length > 0 ? datewiseBreakup.findIndex(breakup => breakup.date.toLocaleDateString() == monitoringsCost[lastMonitoringIndex]._id.toLocaleDateString()) : 0;
+        plannedIndex = datewiseBreakup.length > 0 ? datewiseBreakup.findIndex(breakup => breakup.date.toLocaleDateString() == (new Date()).toLocaleDateString()) : null;
+        // plannedValue = datewiseBreakup[plannedIndex].cumulativePlannedCost;
+        plannedValue = plannedIndex > -1 ? datewiseBreakup[plannedIndex].cumulativePlannedCost : datewiseBreakup[datewiseBreakup.length - 1].cumulativePlannedCost;
         earnedValue = lastMonitoringIndex > -1 ? datewiseActualBreakup[lastMonitoringIndex].cumulativeEarnedValue : 0;
         actualCost = lastMonitoringIndex > -1 ? datewiseActualBreakup[lastMonitoringIndex].cumulativeActualCost : 0;
+        console.log()
       }
 
 
@@ -2293,569 +3540,980 @@ module.exports = {
       respondWithError(res, error, 'Error when getting task.');
     }
   },
-  forecastDashboardByProjectId: async function (req, res) {
+  forecastByProgramId: async function (req, res) {
     const DATETIME = dateFormat(new Date(), 'yyyy-mm-dd HH:MM:ss');
     try {
-      var project = ObjectId(req.params.id);
-      let currentProject = { project };
-      // let rootTask = await taskModel.findOne({ project, taskId: '0' }).lean();
-
-      let allWPTasks = await taskModel
-        .find({ project, workPackage: true })
-        .populate('projectLocation', 'pathId')
-        .sort({ plannedStartDate: 1 })
-        .lean();
-      let lastPlannedDate = new Date(0);
-      let weightageMap = allWPTasks.reduce((map, task) => {
-        map[task.taskId] = task.weightage;
-        if (lastPlannedDate < task.plannedEndDate) lastPlannedDate = new Date(task.plannedEndDate);
-        return map;
-      }, {});
-      // let monitorings = await monitoringModel
-      //   .find(currentProject)
-      //   .populate('task', ['description', 'plannedCost', 'actualCost', 'projectLocation', 'actualStartDate', 'actualEndDate']);
-      let monitoringsCost;
-
-      // let firstPlannedTask = await taskModel
-      //   .findOne({ project, actualStartDate: { $ne: null }, workPackage: true })
-      //   .sort({ actualStartDate: 1 })
-      //   .lean();
-      let drows = await taskModel.find({
-        project,
-        workPackage: true,
-        completed: { $ne: 100 }
-      });
+      var program = ObjectId(req.params.id);
+      var projects = (await projectModel.find({ program }, { _id: 1 }).lean()).map((d) => d._id);
       let completionDate = null;
-      if (drows.length == 0) {
-        drows = await taskModel.find({ project, workPackage: true }).sort({ plannedEndDate: -1 }).limit(1);
-        completionDate = drows.length > 0 ? drows[0].actualEndDate : null;
-      }
-
-
-      // let tasks = allWPTasks;
-      // let prev = null;
-
-      let datewiseBreakup = allWPTasks.length > 0 ? createDates(new Date(allWPTasks[0].plannedStartDate), lastPlannedDate) : [];
-      // let datewiseBreakup = createDates(new Date(allWPTasks[0].plannedStartDate), lastPlannedDate);
-
-
-      allWPTasks.forEach(task => {
-        let plannedStartDate = new Date(task.plannedStartDate.toLocaleDateString());
-        let plannedEndDate = new Date(task.plannedEndDate.toLocaleDateString());
-        let i = 0;
-        while (datewiseBreakup[i] && datewiseBreakup[i].date <= plannedEndDate) {
-          if (datewiseBreakup[i].date >= plannedStartDate) {
-            if (isBusinessDay(datewiseBreakup[i].date)) {
-              datewiseBreakup[i].plannedCost += task.plannedCostPerDay;
-              datewiseBreakup[i].plannedCompletion += weightageMap[task.taskId] / task.days;
-            }
-          }
-          i++;
-        }
-      });
-
-      datewiseBreakup.forEach((breakup, i) => {
-        datewiseBreakup[i].cumulativePlannedCost = (i == 0 ? 0 : datewiseBreakup[i - 1].cumulativePlannedCost) + breakup.plannedCost;
-        datewiseBreakup[i].cumulativePlannedCompletion = (i == 0 ? 0 : datewiseBreakup[i - 1].cumulativePlannedCompletion) + breakup.plannedCompletion;
-      })
-
-
-      // let lastMonitoredMonth;
-
-
-
       let query = [
-        { $match: currentProject },
+        { $match: { project: { $in: projects } } },
         {
           $group: {
             _id: '$monitoringDate',
-            actualCost: { $sum: '$actualCost' },
-            monitoringWeight: { $sum: '$monitoringWeight' },
+            actualCost: { $sum: '$actualCost' }
           }
         },
         { $sort: { _id: 1 } }
-
       ];
-
       let datewiseActualBreakup, lastMonitoringIndex;
-      monitoringsCost = await monitoringModel.aggregate(query);
+      let monitoringsCost = await monitoringModel.aggregate(query);
       if (monitoringsCost.length > 0) {
-        datewiseActualBreakup = monitoringsCost.map(m => ({ date: m._id, actualCost: 0, actualCompletion: 0, cumulativeActualCompletion: 0, cumulativeActualCost: 0 }));
-        // if (monitoringsCost.length == 0) monitoringsCost.push({ date: new Date(), actualCost: 0, monitoringWeight: 0 });
+        datewiseActualBreakup = monitoringsCost.map(m => ({ date: m._id, cumulativeActualCost: 0 }));
         lastMonitoringIndex = monitoringsCost.length - 1;
-        // let isSameDate = false;
         monitoringsCost.forEach((monitoring, i) => {
-          datewiseActualBreakup[i].actualCost += monitoring.actualCost;
-          datewiseActualBreakup[i].actualCompletion += monitoring.monitoringWeight;
-          datewiseActualBreakup[i].cumulativeActualCost = (i > 0 ? datewiseActualBreakup[i - 1].cumulativeActualCost : 0) + datewiseActualBreakup[i].actualCost;
-          datewiseActualBreakup[i].cumulativeActualCompletion = (i > 0 ? datewiseActualBreakup[i - 1].cumulativeActualCompletion : 0) + datewiseActualBreakup[i].actualCompletion;
+          datewiseActualBreakup[i].cumulativeActualCost = (i > 0 ? datewiseActualBreakup[i - 1].cumulativeActualCost : 0) + monitoring.actualCost;
         })
       }
 
-      //  let EVMValuesPerMonth = [];
-      // let budAtComp = datewiseBreakup[datewiseBreakup.length - 1].cumulativePlannedCost;
-      // // datewiseBreakup.forEach((breakup, i) => {
-      //   EVMValuesPerMonth.push({
-      //     RecordDate: breakup.date,
-      //     PV: breakup.cumulativePlannedCost,
-      //   });
-      // })
-      let EVMValuesPerMonth2 = [];
-      // let lastEVM;
+      let graphData = [];
       if (datewiseActualBreakup) {
-
-
-        let D = [datewiseActualBreakup[0].actualCost];
-        let A = [D[0]],
-          T = [0];
-
+        let D = [];
+        let A = [datewiseActualBreakup[0].cumulativeActualCost], T = [0];
         datewiseActualBreakup.forEach((breakup, i) => {
           D.push(breakup.cumulativeActualCost);
-          // datewiseActualBreakup[i].cumulativeEarnedValue = datewiseActualBreakup[i].cumulativeActualCompletion * budAtComp;
-          EVMValuesPerMonth2.push({
+          graphData.push({
             RecordDate: breakup.date,
             LastMonitoring: lastMonitoringIndex == i,
             AC: breakup.cumulativeActualCost,
-            // EV: breakup.cumulativeEarnedValue,
-            FV: i > 0 ? EVMValuesPerMonth2[i - 1].FV + getFt(i, D, A, T) : 0
+            FV: i > 0 ? getFt(i, D, A, T) : 0
           });
         })
-        let lastEVM = EVMValuesPerMonth2[EVMValuesPerMonth2.length - 1];
-        EVMValuesPerMonth2.push({
+        let lastEVM = graphData[graphData.length - 1];
+        graphData.push({
           RecordDate: endOfMonth(addMonths(lastEVM.RecordDate, 1)),
           LastMonitoring: true,
-          FV: lastEVM.FV + getFt(EVMValuesPerMonth2.length - 1, D, A, T)
+          FV: lastEVM.FV + getFt(graphData.length - 1, D, A, T)
         });
       } else datewiseActualBreakup = [{ actualCost: 0 }];
-      // let todayIndex = datewiseBreakup.findIndex(breakup => breakup.date.toLocaleDateString() == (new Date()).toLocaleDateString());
-      //  let plannedIndex = monitoringsCost.length > 0 ? datewiseBreakup.findIndex(breakup => breakup.date.toLocaleDateString() == monitoringsCost[lastMonitoringIndex]._id.toLocaleDateString()) : 0;
-      // let plannedValue = datewiseBreakup[plannedIndex].cumulativePlannedCost;
-      // let earnedValue = lastMonitoringIndex ? datewiseActualBreakup[lastMonitoringIndex].cumulativeEarnedValue : 0;
-      // let actualCost = lastMonitoringIndex ? datewiseActualBreakup[lastMonitoringIndex].cumulativeActualCost : 0;
 
-      // let currentMonthActualCost = 0, currentMonthPlannedCost = 0;
-
-      // let costVariance = Math.round((earnedValue - actualCost) * 10) / 10;
-      // let scheduleVariance = Math.round((earnedValue - plannedValue) * 10) / 10;
-      // let scheduleVarianceInDays = scheduleVariance * 30;
-      // let scheduleStatus = 'On Schedule';
-      // if (scheduleVariance > 0) scheduleStatus = 'Ahead of schedule';
-      // else if (scheduleVariance < 0) scheduleStatus = 'Behind schedule';
-      // let costStatus = 'On budget';
-      // if (costVariance > 0) costStatus = 'Under budget';
-      // if (costVariance < 0) costStatus = 'Over budget';
-      // let CPI = actualCost ? earnedValue / actualCost : 0;
-      // let SPI = earnedValue / plannedValue;
-      // let estimateAtCompletion = actualCost ? (actualCost + (budAtComp - earnedValue) / (SPI * CPI)) : budAtComp;
-      // let varianceAtCompletion = budAtComp - estimateAtCompletion;
-      // let voc_actual = actualCost / budAtComp;
-      // let voc_estimated = actualCost / estimateAtCompletion;
-      // let acv = estimateAtCompletion / budAtComp;
-      // if (Math.abs(varianceAtCompletion) < 500) varianceAtCompletion = 0;
-      // v = estimateAtCompletion - actualCost;
-      // let TCPI = (actualCost && budAtComp != earnedValue) ? (budAtComp - earnedValue) / (estimateAtCompletion - actualCost) : 0;
-      // let actualDaysSinceExecution = businessDays(
-      //   firstPlannedTask ? firstPlannedTask.actualStartDate : new Date(),
-      //   completionDate || new Date()
-      // );
-      // let totalPlannedDays = businessDays(rootTask.plannedStartDate, rootTask.plannedEndDate);
-
-      /*
-            query = [
-              {
-                $match: {
-                  $and: [{ project }, { $or: [{ boqType: '1' }, { __type: 'TaskUtilizedResource' }] }]
-                }
-              },
-              {
-                $group: {
-                  _id: { task: '$task' },
-                  total: { $sum: { $multiply: ['$actualCostPerUnit', '$quantity'] } },
-                  qty: { $sum: '$quantity' }
-                }
-              }
-            ];
-      
-      
-            let result = await (await taskPlannedResourceModel.find({ project }).populate("task", ["plannedStartDate", "plannedEndDate"]).lean()).filter(row => row.task.plannedEndDate <= new Date());
-            let monthlyLabor = {};
-            result.forEach(d => {
-              let end = new Date(d.task.plannedEndDate);
-              let start = new Date(d.task.plannedStartDate)
-              let days = differenceInDays(end, start);
-              let initial = new Date(start);
-              let count = 0;
-      
-      
-              let perDayCost = d.total / days
-              let prevDate = new Date(initial);
-              while (initial <= end) {
-                if (prevDate.getMonth() < initial.getMonth() || differenceInDays(end, initial) == 0) {
-                  let ref = monthlyLabor[startOfMonth(initial)];
-                  let total = (count * perDayCost);
-                  if (!ref) monthlyLabor[startOfMonth(initial)] = { actual: { total: 0, qty: 0 }, planned: { total, qty: count } };
-                  else {
-                    monthlyLabor[startOfMonth(initial)].planned.total += total;
-                    monthlyLabor[startOfMonth(initial)].planned.qty += count;
-                  }
-                  count = 1;
-                }
-                prevDate = new Date(initial);
-                count++;
-                initial = addDays(initial, 1)
-              }
-            });
-      
-      
-            
-            query = [
-              {
-                $match: {
-                  $and: [{ project }, { boqType: '1' }]
-                }
-              },
-              {
-                $group: {
-                  _id: {
-                    month: { $dateToString: { date: "$monitoringDate", format: "%m-01-%Y" } },
-                    task: "$task"
-                  },
-                  monitoringDate: { $last: "$monitoringDate" },
-                  total: { $sum: { $multiply: ['$actualCostPerUnit', '$quantity'] } }
-                }
-              },
-              {
-                $lookup:
-                {
-                  from: "tasks",
-                  localField: "_id.task",
-                  foreignField: "_id",
-                  as: "task"
-                }
-              },
-      
-      
-            ];
-      
-            result = await taskUtilizedResourceModel.aggregate(query);
-            // result = await taskUtilizedResourceModel.find({project, boqType: 1}).populate('task',['plannedCostPerDay','actualStartDate']).lean()
-            result.forEach((row, i) => {
-              let month = new Date(row._id.month);
-              let fromDate = row.task[0].actualStartDate;
-              if (result[i - 1] && result[i - 1].task.toString() == row._id.task.toString()) fromDate = result[i - 1].monitoringDate;
-              let days = differenceInDays(row.monitoringDate, fromDate);
-              let total = row.total;
-              let ref = monthlyLabor[month];
-              if (!monthlyLabor[month] || !monthlyLabor[month].planned) monthlyLabor[month] = { planned: { total: 0, qty: 0 }, actual: { total, qty: days } };
-              else {
-                monthlyLabor[month].actual.total += total;
-                monthlyLabor[month].actual.qty += days;
-              }
-            })
-      */
-      let data = {
-        //    monitorings,
-        //    estimateAtCompletion,
-        //  TCPI,
-        //   scheduleVarianceInDays,
-        //    scheduleVariance,
-        //    scheduleStatus,
-        //     costVariance,
-        //      costStatus,
-        //      CPI,
-        //      SPI,
-        //     voc_actual,
-        //     voc_estimated,
-        //      acv,
-        //     varianceAtCompletion,
-        //    budAtComp,
-        //     tasks,
-        completionDate,
-        //    monitoringsCost,
-        //  EVMValuesPerMonth,
-        EVMValuesPerMonth2,
-      };
-      return res.json({ success: true, data: data });
+      return res.json({ success: true, completionDate, graphData });
     } catch (error) {
       console.log(error)
       respondWithError(res, error, 'Error when getting task.');
     }
   },
-  forecast1DashboardByProjectId: async function (req, res) {
+
+  forecastByPortfolioId: async function (req, res) {
+    const DATETIME = dateFormat(new Date(), 'yyyy-mm-dd HH:MM:ss');
+    try {
+      let portfolioId = req.params.id;
+      let programs = await programModel.find({ portfolio: portfolioId }).lean();
+      var projects = (await projectModel.find({ program: { $in: programs } }, { _id: 1 }).lean()).map((d) => d._id);
+
+      let completionDate = null;
+      let query = [
+        { $match: { project: { $in: projects } } },
+        {
+          $group: {
+            _id: '$monitoringDate',
+            actualCost: { $sum: '$actualCost' }
+          }
+        },
+        { $sort: { _id: 1 } }
+      ];
+      let datewiseActualBreakup, lastMonitoringIndex;
+      let monitoringsCost = await monitoringModel.aggregate(query);
+      if (monitoringsCost.length > 0) {
+        datewiseActualBreakup = monitoringsCost.map(m => ({ date: m._id, cumulativeActualCost: 0 }));
+        lastMonitoringIndex = monitoringsCost.length - 1;
+        monitoringsCost.forEach((monitoring, i) => {
+          datewiseActualBreakup[i].cumulativeActualCost = (i > 0 ? datewiseActualBreakup[i - 1].cumulativeActualCost : 0) + monitoring.actualCost;
+        })
+      }
+
+      let graphData = [];
+      if (datewiseActualBreakup) {
+        let D = [];
+        let A = [datewiseActualBreakup[0].cumulativeActualCost], T = [0];
+        datewiseActualBreakup.forEach((breakup, i) => {
+          D.push(breakup.cumulativeActualCost);
+          graphData.push({
+            RecordDate: breakup.date,
+            LastMonitoring: lastMonitoringIndex == i,
+            AC: breakup.cumulativeActualCost,
+            FV: i > 0 ? getFt(i, D, A, T) : 0
+          });
+        })
+        let lastEVM = graphData[graphData.length - 1];
+        graphData.push({
+          RecordDate: endOfMonth(addMonths(lastEVM.RecordDate, 1)),
+          LastMonitoring: true,
+          FV: lastEVM.FV + getFt(graphData.length - 1, D, A, T)
+        });
+      } else datewiseActualBreakup = [{ actualCost: 0 }];
+
+      return res.json({ success: true, completionDate, graphData });
+    } catch (error) {
+      console.log(error)
+      respondWithError(res, error, 'Error when getting task.');
+    }
+  },
+  forecastByPortfolioId1: async function (req, res) {
+    const DATETIME = dateFormat(new Date(), 'yyyy-mm-dd HH:MM:ss');
+    try {
+      var portfolio = ObjectId(req.params.id);
+      var programs = (await programModel.find({ portfolio }, { _id: 1 }).lean()).map((d) => d._id);
+      var projects = (await projectModel.find({ program: { $in: programs } }, { _id: 1 }).lean()).map((d) => d._id);
+
+      let completionDate = null;
+      let query = [
+        { $match: { project: { $in: projects } } },
+        {
+          $group: {
+            _id: '$monitoringDate',
+            actualCost: { $sum: '$actualCost' }
+          }
+        },
+        { $sort: { _id: 1 } }
+      ];
+      let datewiseActualBreakup, lastMonitoringIndex;
+      let monitoringsCost = await monitoringModel.aggregate(query);
+      if (monitoringsCost.length > 0) {
+        datewiseActualBreakup = monitoringsCost.map(m => ({ date: m._id, cumulativeActualCost: 0 }));
+        lastMonitoringIndex = monitoringsCost.length - 1;
+        monitoringsCost.forEach((monitoring, i) => {
+          datewiseActualBreakup[i].cumulativeActualCost = (i > 0 ? datewiseActualBreakup[i - 1].cumulativeActualCost : 0) + monitoring.actualCost;
+        })
+      }
+
+      let graphData = [];
+      if (datewiseActualBreakup) {
+        let D = [];
+        let A = [datewiseActualBreakup[0].cumulativeActualCost], T = [0];
+        datewiseActualBreakup.forEach((breakup, i) => {
+          D.push(breakup.cumulativeActualCost);
+          graphData.push({
+            RecordDate: breakup.date,
+            LastMonitoring: lastMonitoringIndex == i,
+            AC: breakup.cumulativeActualCost,
+            FV: i > 0 ? getFt(i, D, A, T) : 0
+          });
+        })
+        let lastEVM = graphData[graphData.length - 1];
+        graphData.push({
+          RecordDate: endOfMonth(addMonths(lastEVM.RecordDate, 1)),
+          LastMonitoring: true,
+          FV: lastEVM.FV + getFt(graphData.length - 1, D, A, T)
+        });
+      } else datewiseActualBreakup = [{ actualCost: 0 }];
+
+      return res.json({ success: true, completionDate, graphData });
+    } catch (error) {
+      console.log(error)
+      respondWithError(res, error, 'Error when getting task.');
+    }
+  },
+
+  projectMonitoringByProgramId: async function (req, res) {
+    const DATETIME = dateFormat(new Date(), 'yyyy-mm-dd HH:MM:ss');
+    try {
+      var program = ObjectId(req.params.id);
+      var projects = (await projectModel.find({ program }, { _id: 1 }).lean()).map((d) => d._id);
+      let list = await projectModel.find({ program }, { _id: 1, name: 1 }).lean();
+      let actualResourceBreakup = (await taskUtilizedResourceModel.aggregate([{
+        $match: {
+          $and: [
+            { project: { $in: projects } },
+            { $or: [{ boqType: '1' }, { __type: 'TaskUtilizedResource' }] }
+          ]
+        }
+      },
+      {
+        $group: {
+          _id: { project: "$project" },
+          total: { $sum: { $multiply: ['$actualCostPerUnit', '$quantity'] } }
+        }
+      }
+      ])).reduce((obj, row) => {
+        if (!obj[row._id.project]) obj[row._id.project] = {};
+        obj[row._id.project] = row.total;
+        return obj;
+      }, {});
+
+      let plannedResourceBreakup = (await taskPlannedResourceModel.aggregate([
+        {
+          $match: {
+            $and: [
+              { project: { $in: projects } },
+              { $or: [{ boqType: '1' }, { __type: 'TaskPlannedResource' }] }
+            ]
+          }
+        },
+        {
+          $group: {
+            _id: { project: "$project" },
+            total: { $sum: { $multiply: ['$cost', '$quantity'] } }
+          }
+        }
+      ])).reduce((obj, row) => {
+        if (!obj[row._id.project]) obj[row._id.project] = {};
+        obj[row._id.project] = row.total;
+        return obj;
+      }, {});
+
+      let actualLaborBreakup = (await taskUtilizedResourceModel.aggregate([
+        {
+          $match: {
+            $and: [{ project: { $in: projects } }, { boqType: '1' }]
+          }
+        },
+        {
+          $group: {
+            _id: { project: "$project" },
+            total: { $sum: { $multiply: ['$actualCostPerUnit', '$quantity'] } }
+          }
+        }
+      ])).reduce((obj, row) => {
+        if (!obj[row._id.project]) obj[row._id.project] = {};
+        obj[row._id.project] = row.total;
+        return obj;
+      }, {});
+
+      let plannedLaborBreakup = (await taskPlannedResourceModel.aggregate([
+        {
+          $match: {
+            $and: [{ project: { $in: projects } }, { boqType: '1' }]
+          }
+        },
+        {
+          $group: {
+            _id: { project: "$project" },
+            total: { $sum: { $multiply: ['$cost', '$quantity'] } }
+          }
+        }
+      ])).reduce((obj, row) => {
+        if (!obj[row._id.project]) obj[row._id.project] = {};
+        obj[row._id.project] = row.total;
+        return obj;
+      }, {});
+
+      let actualContractorEquipmentBreakup = (await taskUtilizedResourceModel.aggregate([
+        {
+          $match: {
+            $and: [{ project: { $in: projects } }, { boqType: '3' }]
+          }
+        },
+        {
+          $group: {
+            _id: { project: "$project" },
+            total: { $sum: { $multiply: ['$actualCostPerUnit', '$quantity'] } }
+          }
+        }
+      ])).reduce((obj, row) => {
+        if (!obj[row._id.project]) obj[row._id.project] = {};
+        obj[row._id.project] = row.total;
+        return obj;
+      }, {});
+
+      let plannedContractorEquipmentBreakup = (await taskPlannedResourceModel.aggregate([
+        {
+          $match: {
+            $and: [{ project: { $in: projects } }, { boqType: '3' }]
+          }
+        },
+        {
+          $group: {
+            _id: { project: "$project" },
+            total: { $sum: { $multiply: ['$cost', '$quantity'] } }
+          }
+        }
+      ])).reduce((obj, row) => {
+        if (!obj[row._id.project]) obj[row._id.project] = {};
+        obj[row._id.project] = row.total;
+        return obj;
+      }, {});
+
+      // let consumableMaterialBreakup = (await taskPlannedResourceModel.aggregate([
+      //     {
+      //         $match: {
+      //             $and: [{ project: { $in: projects } }, { boqType: '4' }, { top3: { $ne: 0 } }]
+      //         }
+      //     },
+      //     {
+      //         $group: {
+      //             _id: { material: '$description' },
+      //             total: { $sum: { $multiply: ['$cost', '$quantity'] } }
+      //         }
+      //     }
+      // ])).reduce((obj, row) => {
+      //     if (!obj[row._id.material]) obj[row._id.material] = {};
+      //     obj[row._id.material] = row.total;
+      //     return obj;
+      // }, {});
+
+
+      // let projectWiseConsumedMaterial = await taskUtilizedResourceModel.aggregate([
+      //     {
+      //         $match: {
+      //             $and: [{ project: { $in: projects } }, { boqType: '4' }, { top3: { $ne: 0 } }]
+      //         }
+      //     },
+      //     {
+      //         $group: {
+      //             _id: { program: programId, rankId: '$top3' },
+      //             total: { $sum: { $multiply: ['$actualCostPerUnit', '$quantity'] } }
+      //         }
+      //     }
+      // ]);
+
+
+
+      let total = 0;
+      let costAndCompletion = (await taskModel.aggregate([
+        { $sort: { plannedStartDate: 1 } },
+        { $match: { project: { $in: projects }, workPackage: true } },
+        {
+          $group: {
+            _id: { project: "$project" },
+            actual: { $sum: '$actualCost' },
+            planned: { $sum: '$plannedCost' },
+            completion: { $sum: { $multiply: ['$weightage', '$completed'] } }
+          }
+        }
+      ])).reduce((obj, row) => {
+        if (!obj[row._id.project]) obj[row._id.project] = {};
+        obj[row._id.project].actual = row.actual;
+        obj[row._id.project].planned = row.planned;
+        obj[row._id.project].completion = row.completion;
+        total += row.planned;
+        return obj;
+      }, {});
+
+
+
+      for (let key in costAndCompletion) {
+        costAndCompletion[key].weightage = costAndCompletion[key].planned / total;
+      }
+
+
+      let schedule = await projectModel.aggregate([{
+        $match: { program },
+      }, {
+        $project: {
+          plannedDays: { $divide: [{ $subtract: ["$expectedEndDate", "$expectedStartDate"] }, 864e5] },
+          actualDays: {
+            $divide: [{
+              $subtract: [new Date(), "$expectedStartDate"]
+            }, 864e5]
+          },
+
+        }
+      }]);
+
+      schedule = schedule.reduce((obj, row) => {
+        if (!obj[row._id.toString()]) obj[row._id.toString()] = {};
+        obj[row._id.toString()].actualDays = row.actualDays;
+        obj[row._id.toString()].plannedDays = row.plannedDays;
+        return obj;
+      }, {});
+
+
+
+      let data = {
+        costAndCompletion,
+        list,
+        schedule,
+        actualResourceBreakup,
+        plannedResourceBreakup,
+        actualLaborBreakup,
+        plannedLaborBreakup,
+        actualContractorEquipmentBreakup,
+        plannedContractorEquipmentBreakup
+      };
+      return res.json({ success: true, data: data });
+    } catch (error) {
+
+      respondWithError(res, error, 'Error when getting task.');
+    }
+  },
+
+  programMonitoringByPortfolioId: async function (req, res) {
+    const DATETIME = dateFormat(new Date(), 'yyyy-mm-dd HH:MM:ss');
+    try {
+      let portfolioId = ObjectId(req.params.id);
+      let programs = await programModel.find({ portfolio: portfolioId }).lean();
+      let list = await programModel.find({ _id: { $in: programs } }, { _id: 1, name: 1 }).lean();
+      let query = [{
+        $lookup: { from: "projects", localField: "project", foreignField: "_id", as: "Project" },
+      }, { "$unwind": { "path": "$Project", "preserveNullAndEmptyArrays": true } },
+      {
+        $match: {
+          $and: [
+            { "Project.program": { $in: programs } },
+            { $or: [{ boqType: '1' }, { __type: 'TaskUtilizedResource' }] }
+          ]
+        }
+      },
+      {
+        $group: {
+          _id: { program: "$Project.program" },
+          total: { $sum: { $multiply: ['$actualCostPerUnit', '$quantity'] } }
+        }
+      }];
+
+      let actualResourceBreakup = (await taskUtilizedResourceModel.aggregate(query)).reduce((obj, row) => {
+        if (!obj[row._id.program]) obj[row._id.program] = {};
+        obj[row._id.program] = row.total;
+        return obj;
+      }, {});
+
+
+      query = [{
+        $lookup: { from: "projects", localField: "project", foreignField: "_id", as: "Project" },
+      }, { "$unwind": { "path": "$Project", "preserveNullAndEmptyArrays": true } },
+      {
+        $match: {
+          $and: [
+            { "Project.program": { $in: programs } },
+            { $or: [{ boqType: '1' }, { __type: 'TaskPlannedResource' }] }
+          ]
+        }
+      },
+      {
+        $group: {
+          _id: { program: "$Project.program" },
+          total: { $sum: { $multiply: ['$cost', '$quantity'] } }
+        }
+      }];
+
+      let plannedResourceBreakup = (await taskPlannedResourceModel.aggregate(query)).reduce((obj, row) => {
+        if (!obj[row._id.program]) obj[row._id.program] = {};
+        obj[row._id.program] = row.total;
+        return obj;
+      }, {});
+
+
+
+      query = [{
+        $lookup: { from: "projects", localField: "project", foreignField: "_id", as: "Project" },
+      }, { "$unwind": { "path": "$Project", "preserveNullAndEmptyArrays": true } },
+      {
+        $match: {
+          $and: [
+            { "Project.program": { $in: programs } },
+            { boqType: '1' }
+          ]
+        }
+      },
+      {
+        $group: {
+          _id: { program: "$Project.program" },
+          total: { $sum: { $multiply: ['$actualCostPerUnit', '$quantity'] } }
+        }
+      }];
+
+
+      let actualLaborBreakup = (await taskUtilizedResourceModel.aggregate(query)).reduce((obj, row) => {
+        if (!obj[row._id.program]) obj[row._id.program] = {};
+        obj[row._id.program] = row.total;
+        return obj;
+      }, {});
+
+
+      query = [{
+        $lookup: { from: "projects", localField: "project", foreignField: "_id", as: "Project" },
+      }, { "$unwind": { "path": "$Project", "preserveNullAndEmptyArrays": true } },
+      {
+        $match: {
+          $and: [
+            { "Project.program": { $in: programs } },
+            { boqType: '1' }
+          ]
+        }
+      },
+      {
+        $group: {
+          _id: { program: "$Project.program" },
+          total: { $sum: { $multiply: ['$cost', '$quantity'] } }
+        }
+      }];
+
+      let plannedLaborBreakup = (await taskPlannedResourceModel.aggregate(query)).reduce((obj, row) => {
+        if (!obj[row._id.program]) obj[row._id.program] = {};
+        obj[row._id.program] = row.total;
+        return obj;
+      }, {});
+
+
+
+      query = [{
+        $lookup: { from: "projects", localField: "project", foreignField: "_id", as: "Project" },
+      }, { "$unwind": { "path": "$Project", "preserveNullAndEmptyArrays": true } },
+      {
+        $match: {
+          $and: [
+            { "Project.program": { $in: programs } },
+            { boqType: '3' }
+          ]
+        }
+      },
+      {
+        $group: {
+          _id: { program: "$Project.program" },
+          total: { $sum: { $multiply: ['$actualCostPerUnit', '$quantity'] } }
+        }
+      }];
+
+
+      let actualContractorEquipmentBreakup = (await taskUtilizedResourceModel.aggregate(query)).reduce((obj, row) => {
+        if (!obj[row._id.program]) obj[row._id.program] = {};
+        obj[row._id.program] = row.total;
+        return obj;
+      }, {});
+
+      query = [{
+        $lookup: { from: "projects", localField: "project", foreignField: "_id", as: "Project" },
+      }, { "$unwind": { "path": "$Project", "preserveNullAndEmptyArrays": true } },
+      {
+        $match: {
+          $and: [
+            { "Project.program": { $in: programs } },
+            { boqType: '3' }
+          ]
+        }
+      },
+      {
+        $group: {
+          _id: { program: "$Project.program" },
+          total: { $sum: { $multiply: ['$cost', '$quantity'] } }
+        }
+      }];
+
+
+      let plannedContractorEquipmentBreakup = (await taskPlannedResourceModel.aggregate(query)).reduce((obj, row) => {
+        if (!obj[row._id.program]) obj[row._id.program] = {};
+        obj[row._id.program] = row.total;
+        return obj;
+      }, {});
+
+      // let consumableMaterialBreakup = (await taskPlannedResourceModel.aggregate([
+      //     {
+      //         $match: {
+      //             $and: [{ project: { $in: projects } }, { boqType: '4' }, { top3: { $ne: 0 } }]
+      //         }
+      //     },
+      //     {
+      //         $group: {
+      //             _id: { material: '$description' },
+      //             total: { $sum: { $multiply: ['$cost', '$quantity'] } }
+      //         }
+      //     }
+      // ])).reduce((obj, row) => {
+      //     if (!obj[row._id.material]) obj[row._id.material] = {};
+      //     obj[row._id.material] = row.total;
+      //     return obj;
+      // }, {});
+
+
+      // let projectWiseConsumedMaterial = await taskUtilizedResourceModel.aggregate([
+      //     {
+      //         $match: {
+      //             $and: [{ project: { $in: projects } }, { boqType: '4' }, { top3: { $ne: 0 } }]
+      //         }
+      //     },
+      //     {
+      //         $group: {
+      //             _id: { program: programId, rankId: '$top3' },
+      //             total: { $sum: { $multiply: ['$actualCostPerUnit', '$quantity'] } }
+      //         }
+      //     }
+      // ]);
+
+
+      let total = 0;
+
+
+      query = [{ $sort: { plannedStartDate: 1 } },
+      { $lookup: { from: "projects", localField: "project", foreignField: "_id", as: "Project" } },
+      { "$unwind": { "path": "$Project", "preserveNullAndEmptyArrays": true } },
+      {
+        $match: {
+          "Project.program": { $in: programs },
+          workPackage: true
+        }
+      },
+      {
+        $group: {
+          _id: { program: "$Project.program" },
+          actual: { $sum: '$actualCost' },
+          planned: { $sum: '$plannedCost' },
+          completion: { $sum: { $multiply: ['$weightage', '$completed'] } }
+        }
+      }];
+
+
+      let costAndCompletion = (await taskModel.aggregate(query)).reduce((obj, row) => {
+        if (!obj[row._id.program]) obj[row._id.program] = {};
+        obj[row._id.program].actual = row.actual;
+        obj[row._id.program].planned = row.planned;
+        obj[row._id.program].completion = row.completion;
+        total += row.planned;
+        return obj;
+      }, {});
+
+
+      for (let key in costAndCompletion) {
+        costAndCompletion[key].weightage = costAndCompletion[key].planned / total;
+      }
+
+      let schedule = await programModel.aggregate([{
+        $match: { _id: { $in: programs } },
+      }, {
+        $project: {
+          plannedDays: { $divide: [{ $subtract: ["$endDate", "$startDate"] }, 864e5] },
+          actualDays: {
+            $divide: [{
+              $subtract: [new Date(), "$startDate"]
+            }, 864e5]
+          },
+        }
+      }]);
+
+      schedule = schedule.reduce((obj, row) => {
+        if (!obj[row._id.toString()]) obj[row._id.toString()] = {};
+        obj[row._id.toString()].actualDays = row.actualDays;
+        obj[row._id.toString()].plannedDays = row.plannedDays;
+        return obj;
+      }, {});
+
+
+      let data = {
+        costAndCompletion,
+        list,
+        schedule,
+        actualResourceBreakup,
+        plannedResourceBreakup,
+        actualLaborBreakup,
+        plannedLaborBreakup,
+        actualContractorEquipmentBreakup,
+        plannedContractorEquipmentBreakup
+      };
+      return res.json({ success: true, data });
+    } catch (error) {
+      console.log(error)
+      respondWithError(res, error, 'Error when getting task.');
+    }
+  },
+  programMonitoringByPortfolioId1: async function (req, res) {
+    const DATETIME = dateFormat(new Date(), 'yyyy-mm-dd HH:MM:ss');
+    try {
+      var portfolio = ObjectId(req.params.id);
+      var programs = (await programModel.find({ portfolio }, { _id: 1 }).lean()).map((d) => ObjectId(d._id));
+      let list = await programModel.find({ portfolio }, { _id: 1, name: 1 }).lean();
+
+      // var projects = (await projectModel.find({ program }, { _id: 1 }).lean()).map((d) => d._id);
+      // let allProjects = await projectModel.find({ program }, { _id: 1, name: 1 }).lean();
+      let query = [{
+        $lookup: { from: "projects", localField: "project", foreignField: "_id", as: "Project" },
+      }, { "$unwind": { "path": "$Project", "preserveNullAndEmptyArrays": true } },
+      {
+        $match: {
+          $and: [
+            { "Project.program": { $in: programs } },
+            { $or: [{ boqType: '1' }, { __type: 'TaskUtilizedResource' }] }
+          ]
+        }
+      },
+      {
+        $group: {
+          _id: { program: "$Project.program" },
+          total: { $sum: { $multiply: ['$actualCostPerUnit', '$quantity'] } }
+        }
+      }];
+
+      let actualResourceBreakup = (await taskUtilizedResourceModel.aggregate(query)).reduce((obj, row) => {
+        if (!obj[row._id.program]) obj[row._id.program] = {};
+        obj[row._id.program] = row.total;
+        return obj;
+      }, {});
+
+
+      query = [{
+        $lookup: { from: "projects", localField: "project", foreignField: "_id", as: "Project" },
+      }, { "$unwind": { "path": "$Project", "preserveNullAndEmptyArrays": true } },
+      {
+        $match: {
+          $and: [
+            { "Project.program": { $in: programs } },
+            { $or: [{ boqType: '1' }, { __type: 'TaskPlannedResource' }] }
+          ]
+        }
+      },
+      {
+        $group: {
+          _id: { program: "$Project.program" },
+          total: { $sum: { $multiply: ['$cost', '$quantity'] } }
+        }
+      }];
+
+      let plannedResourceBreakup = (await taskPlannedResourceModel.aggregate(query)).reduce((obj, row) => {
+        if (!obj[row._id.program]) obj[row._id.program] = {};
+        obj[row._id.program] = row.total;
+        return obj;
+      }, {});
+
+
+
+      query = [{
+        $lookup: { from: "projects", localField: "project", foreignField: "_id", as: "Project" },
+      }, { "$unwind": { "path": "$Project", "preserveNullAndEmptyArrays": true } },
+      {
+        $match: {
+          $and: [
+            { "Project.program": { $in: programs } },
+            { boqType: '1' }
+          ]
+        }
+      },
+      {
+        $group: {
+          _id: { program: "$Project.program" },
+          total: { $sum: { $multiply: ['$actualCostPerUnit', '$quantity'] } }
+        }
+      }];
+
+
+      let actualLaborBreakup = (await taskUtilizedResourceModel.aggregate(query)).reduce((obj, row) => {
+        if (!obj[row._id.program]) obj[row._id.program] = {};
+        obj[row._id.program] = row.total;
+        return obj;
+      }, {});
+
+
+      query = [{
+        $lookup: { from: "projects", localField: "project", foreignField: "_id", as: "Project" },
+      }, { "$unwind": { "path": "$Project", "preserveNullAndEmptyArrays": true } },
+      {
+        $match: {
+          $and: [
+            { "Project.program": { $in: programs } },
+            { boqType: '1' }
+          ]
+        }
+      },
+      {
+        $group: {
+          _id: { program: "$Project.program" },
+          total: { $sum: { $multiply: ['$cost', '$quantity'] } }
+        }
+      }];
+
+      let plannedLaborBreakup = (await taskPlannedResourceModel.aggregate(query)).reduce((obj, row) => {
+        if (!obj[row._id.program]) obj[row._id.program] = {};
+        obj[row._id.program] = row.total;
+        return obj;
+      }, {});
+
+
+
+      query = [{
+        $lookup: { from: "projects", localField: "project", foreignField: "_id", as: "Project" },
+      }, { "$unwind": { "path": "$Project", "preserveNullAndEmptyArrays": true } },
+      {
+        $match: {
+          $and: [
+            { "Project.program": { $in: programs } },
+            { boqType: '3' }
+          ]
+        }
+      },
+      {
+        $group: {
+          _id: { program: "$Project.program" },
+          total: { $sum: { $multiply: ['$actualCostPerUnit', '$quantity'] } }
+        }
+      }];
+
+
+      let actualContractorEquipmentBreakup = (await taskUtilizedResourceModel.aggregate(query)).reduce((obj, row) => {
+        if (!obj[row._id.program]) obj[row._id.program] = {};
+        obj[row._id.program] = row.total;
+        return obj;
+      }, {});
+
+      query = [{
+        $lookup: { from: "projects", localField: "project", foreignField: "_id", as: "Project" },
+      }, { "$unwind": { "path": "$Project", "preserveNullAndEmptyArrays": true } },
+      {
+        $match: {
+          $and: [
+            { "Project.program": { $in: programs } },
+            { boqType: '3' }
+          ]
+        }
+      },
+      {
+        $group: {
+          _id: { program: "$Project.program" },
+          total: { $sum: { $multiply: ['$cost', '$quantity'] } }
+        }
+      }];
+
+
+      let plannedContractorEquipmentBreakup = (await taskPlannedResourceModel.aggregate(query)).reduce((obj, row) => {
+        if (!obj[row._id.program]) obj[row._id.program] = {};
+        obj[row._id.program] = row.total;
+        return obj;
+      }, {});
+
+      // let consumableMaterialBreakup = (await taskPlannedResourceModel.aggregate([
+      //     {
+      //         $match: {
+      //             $and: [{ project: { $in: projects } }, { boqType: '4' }, { top3: { $ne: 0 } }]
+      //         }
+      //     },
+      //     {
+      //         $group: {
+      //             _id: { material: '$description' },
+      //             total: { $sum: { $multiply: ['$cost', '$quantity'] } }
+      //         }
+      //     }
+      // ])).reduce((obj, row) => {
+      //     if (!obj[row._id.material]) obj[row._id.material] = {};
+      //     obj[row._id.material] = row.total;
+      //     return obj;
+      // }, {});
+
+
+      // let projectWiseConsumedMaterial = await taskUtilizedResourceModel.aggregate([
+      //     {
+      //         $match: {
+      //             $and: [{ project: { $in: projects } }, { boqType: '4' }, { top3: { $ne: 0 } }]
+      //         }
+      //     },
+      //     {
+      //         $group: {
+      //             _id: { program: programId, rankId: '$top3' },
+      //             total: { $sum: { $multiply: ['$actualCostPerUnit', '$quantity'] } }
+      //         }
+      //     }
+      // ]);
+
+
+      let total = 0;
+
+
+      query = [{ $sort: { plannedStartDate: 1 } },
+      { $lookup: { from: "projects", localField: "project", foreignField: "_id", as: "Project" } },
+      { "$unwind": { "path": "$Project", "preserveNullAndEmptyArrays": true } },
+      {
+        $match: {
+          "Project.program": { $in: programs },
+          workPackage: true
+        }
+      },
+      {
+        $group: {
+          _id: { program: "$Project.program" },
+          actual: { $sum: '$actualCost' },
+          planned: { $sum: '$plannedCost' },
+          completion: { $sum: { $multiply: ['$weightage', '$completed'] } }
+        }
+      }];
+
+
+      let costAndCompletion = (await taskModel.aggregate(query)).reduce((obj, row) => {
+        if (!obj[row._id.program]) obj[row._id.program] = {};
+        obj[row._id.program].actual = row.actual;
+        obj[row._id.program].planned = row.planned;
+        obj[row._id.program].completion = row.completion;
+        total += row.planned;
+        return obj;
+      }, {});
+
+
+      for (let key in costAndCompletion) {
+        costAndCompletion[key].weightage = costAndCompletion[key].planned / total;
+      }
+
+      let schedule = await programModel.aggregate([{
+        $match: { portfolio },
+      }, {
+        $project: {
+          plannedDays: { $divide: [{ $subtract: ["$endDate", "$startDate"] }, 864e5] },
+          actualDays: {
+            $divide: [{
+              $subtract: [new Date(), "$startDate"]
+            }, 864e5]
+          },
+        }
+      }]);
+
+      schedule = schedule.reduce((obj, row) => {
+        if (!obj[row._id.toString()]) obj[row._id.toString()] = {};
+        obj[row._id.toString()].actualDays = row.actualDays;
+        obj[row._id.toString()].plannedDays = row.plannedDays;
+        return obj;
+      }, {});
+
+
+      let data = {
+        costAndCompletion,
+        list,
+        schedule,
+        actualResourceBreakup,
+        plannedResourceBreakup,
+        actualLaborBreakup,
+        plannedLaborBreakup,
+        actualContractorEquipmentBreakup,
+        plannedContractorEquipmentBreakup
+      };
+      return res.json({ success: true, data });
+    } catch (error) {
+      console.log(error)
+      respondWithError(res, error, 'Error when getting task.');
+    }
+  },
+  forecastByProjectId: async function (req, res) {
     const DATETIME = dateFormat(new Date(), 'yyyy-mm-dd HH:MM:ss');
     try {
       var project = ObjectId(req.params.id);
       let currentProject = { project };
-      let rootTask = await taskModel.findOne({ project, taskId: '0' }).lean();
-
-      let allWPTasks = await taskModel
-        .find({ project, workPackage: true })
-        .populate('projectLocation', 'pathId')
-        .sort({ plannedStartDate: 1 })
-        .lean();
-      let lastPlannedDate = new Date(0);
-      let weightageMap = allWPTasks.reduce((map, task) => {
-        map[task.taskId] = task.weightage;
-        if (lastPlannedDate < task.plannedEndDate) lastPlannedDate = new Date(task.plannedEndDate);
-        return map;
-      }, {});
-      let monitorings = await monitoringModel
-        .find(currentProject)
-        .populate('task', ['description', 'plannedCost', 'actualCost', 'projectLocation', 'actualStartDate', 'actualEndDate']);
-      let monitoringsCost;
-
-      let firstPlannedTask = await taskModel
-        .findOne({ project, actualStartDate: { $ne: null }, workPackage: true })
-        .sort({ actualStartDate: 1 })
-        .lean();
-      let drows = await taskModel.find({
-        project,
-        workPackage: true,
-        completed: { $ne: 100 }
-      });
       let completionDate = null;
-      if (drows.length == 0) {
-        drows = await taskModel.find({ project, workPackage: true }).sort({ plannedEndDate: -1 }).limit(1);
-        completionDate = drows[0].actualEndDate;
-      }
-
-
-      let tasks = allWPTasks;
-      let prev = null;
-
-      let datewiseBreakup = createDates(new Date(allWPTasks[0].plannedStartDate), lastPlannedDate);
-
-
-      allWPTasks.forEach(task => {
-        let plannedStartDate = new Date(task.plannedStartDate.toLocaleDateString());
-        let plannedEndDate = new Date(task.plannedEndDate.toLocaleDateString());
-        let i = 0;
-        while (datewiseBreakup[i] && datewiseBreakup[i].date <= plannedEndDate) {
-          if (datewiseBreakup[i].date >= plannedStartDate) {
-            if (isBusinessDay(datewiseBreakup[i].date)) {
-              datewiseBreakup[i].plannedCost += task.plannedCostPerDay;
-              datewiseBreakup[i].plannedCompletion += weightageMap[task.taskId] / task.days;
-            }
-          }
-          i++;
-        }
-      });
-
-      datewiseBreakup.forEach((breakup, i) => {
-        datewiseBreakup[i].cumulativePlannedCost = (i == 0 ? 0 : datewiseBreakup[i - 1].cumulativePlannedCost) + breakup.plannedCost;
-        datewiseBreakup[i].cumulativePlannedCompletion = (i == 0 ? 0 : datewiseBreakup[i - 1].cumulativePlannedCompletion) + breakup.plannedCompletion;
-      })
-
-
-      let lastMonitoredMonth;
-
-
-
       let query = [
         { $match: currentProject },
         {
           $group: {
             _id: '$monitoringDate',
-            actualCost: { $sum: '$actualCost' },
-            monitoringWeight: { $sum: '$monitoringWeight' },
+            actualCost: { $sum: '$actualCost' }
           }
         },
         { $sort: { _id: 1 } }
-
       ];
+      let datewiseActualBreakup, lastMonitoringIndex;
+      let monitoringsCost = await monitoringModel.aggregate(query);
+      if (monitoringsCost.length > 0) {
+        datewiseActualBreakup = monitoringsCost.map(m => ({ date: m._id, cumulativeActualCost: 0 }));
+        lastMonitoringIndex = monitoringsCost.length - 1;
+        monitoringsCost.forEach((monitoring, i) => {
+          datewiseActualBreakup[i].cumulativeActualCost = (i > 0 ? datewiseActualBreakup[i - 1].cumulativeActualCost : 0) + monitoring.actualCost;
+        })
+      }
 
-
-      monitoringsCost = await monitoringModel.aggregate(query);
-
-      let datewiseActualBreakup = monitoringsCost.map(m => ({ date: m._id, actualCost: 0, actualCompletion: 0, cumulativeActualCompletion: 0, cumulativeActualCost: 0 }));
-      if (monitoringsCost.length == 0) monitoringsCost.push({ date: new Date() });
-      let lastMonitoringIndex = monitoringsCost.length - 1;
-      let isSameDate = false;
-      monitoringsCost.forEach((monitoring, i) => {
-        datewiseActualBreakup[i].actualCost += monitoring.actualCost;
-        datewiseActualBreakup[i].actualCompletion += monitoring.monitoringWeight;
-        datewiseActualBreakup[i].cumulativeActualCost = (i > 0 ? datewiseActualBreakup[i - 1].cumulativeActualCost : 0) + datewiseActualBreakup[i].actualCost;
-        datewiseActualBreakup[i].cumulativeActualCompletion = (i > 0 ? datewiseActualBreakup[i - 1].cumulativeActualCompletion : 0) + datewiseActualBreakup[i].actualCompletion;
-      })
-
-      let D = [datewiseActualBreakup[0].actualCost];
-      let A = [D[0]],
-        T = [0];
-
-      let EVMValuesPerMonth = [];
-      let budAtComp = datewiseBreakup[datewiseBreakup.length - 1].cumulativePlannedCost;
-      datewiseBreakup.forEach((breakup, i) => {
-        EVMValuesPerMonth.push({
-          RecordDate: breakup.date,
-          PV: breakup.cumulativePlannedCost,
+      let graphData = [];
+      if (datewiseActualBreakup) {
+        let D = [];
+        let A = [datewiseActualBreakup[0].cumulativeActualCost], T = [0];
+        datewiseActualBreakup.forEach((breakup, i) => {
+          D.push(breakup.cumulativeActualCost);
+          graphData.push({
+            RecordDate: breakup.date,
+            LastMonitoring: lastMonitoringIndex == i,
+            AC: breakup.cumulativeActualCost,
+            FV: i > 0 ? getFt(i, D, A, T) : 0
+          });
+        })
+        let lastEVM = graphData[graphData.length - 1];
+        graphData.push({
+          RecordDate: endOfMonth(addMonths(lastEVM.RecordDate, 1)),
+          LastMonitoring: true,
+          FV: lastEVM.FV + getFt(graphData.length - 1, D, A, T)
         });
-      })
-      let EVMValuesPerMonth2 = [];
-
-      datewiseActualBreakup.forEach((breakup, i) => {
-        D.push(breakup.cumulativeActualCost);
-        datewiseActualBreakup[i].cumulativeEarnedValue = datewiseActualBreakup[i].cumulativeActualCompletion * budAtComp;
-        EVMValuesPerMonth2.push({
-          RecordDate: breakup.date,
-          LastMonitoring: lastMonitoringIndex == i,
-          AC: breakup.cumulativeActualCost,
-          EV: breakup.cumulativeEarnedValue,
-          FV: i > 0 ? EVMValuesPerMonth2[i - 1].FV + getFt(i, D, A, T) : 0
-        });
-      })
-      let lastEVM = EVMValuesPerMonth2[EVMValuesPerMonth2.length - 1];
-      EVMValuesPerMonth2.push({
-        RecordDate: endOfMonth(addMonths(lastEVM.RecordDate, 1)),
-        LastMonitoring: true,
-        FV: lastEVM.FV + getFt(EVMValuesPerMonth2.length - 1, D, A, T)
-      });
-      // let todayIndex = datewiseBreakup.findIndex(breakup => breakup.date.toLocaleDateString() == (new Date()).toLocaleDateString());
-      let plannedIndex = datewiseBreakup.findIndex(breakup => breakup.date.toLocaleDateString() == monitoringsCost[lastMonitoringIndex]._id.toLocaleDateString());
-      let plannedValue = datewiseBreakup[plannedIndex].cumulativePlannedCost;
-      let earnedValue = datewiseActualBreakup[lastMonitoringIndex].cumulativeEarnedValue;
-      let actualCost = datewiseActualBreakup[lastMonitoringIndex].cumulativeActualCost;
-
-      let currentMonthActualCost = 0, currentMonthPlannedCost = 0;
-
-      let costVariance = Math.round((earnedValue - actualCost) * 10) / 10;
-      let scheduleVariance = Math.round((earnedValue - plannedValue) * 10) / 10;
-      let scheduleVarianceInDays = scheduleVariance * 30;
-      let scheduleStatus = 'On Schedule';
-      if (scheduleVariance > 0) scheduleStatus = 'Ahead of schedule';
-      else if (scheduleVariance < 0) scheduleStatus = 'Behind schedule';
-      let costStatus = 'On budget';
-      if (costVariance > 0) costStatus = 'Under budget';
-      if (costVariance < 0) costStatus = 'Over budget';
-      let CPI = earnedValue / actualCost;
-      let SPI = earnedValue / plannedValue;
-      let estimateAtCompletion = actualCost + (budAtComp - earnedValue) / (SPI * CPI);
-      let varianceAtCompletion = budAtComp - estimateAtCompletion;
-      let voc_actual = actualCost / budAtComp;
-      let voc_estimated = actualCost / estimateAtCompletion;
-      let acv = estimateAtCompletion / budAtComp;
-      if (Math.abs(varianceAtCompletion) < 500) varianceAtCompletion = 0;
-      v = estimateAtCompletion - actualCost;
-      let TCPI = budAtComp != earnedValue ? (budAtComp - earnedValue) / (estimateAtCompletion - actualCost) : 0;
-      let actualDaysSinceExecution = businessDays(
-        firstPlannedTask ? firstPlannedTask.actualStartDate : new Date(),
-        completionDate || new Date()
-      );
-      let totalPlannedDays = businessDays(rootTask.plannedStartDate, rootTask.plannedEndDate);
-
-
-      query = [
-        {
-          $match: {
-            $and: [{ project }, { $or: [{ boqType: '1' }, { __type: 'TaskUtilizedResource' }] }]
-          }
-        },
-        {
-          $group: {
-            _id: { task: '$task' },
-            total: { $sum: { $multiply: ['$actualCostPerUnit', '$quantity'] } },
-            qty: { $sum: '$quantity' }
-          }
-        }
-      ];
-
-
-      let result = await (await taskPlannedResourceModel.find({ project }).populate("task", ["plannedStartDate", "plannedEndDate"]).lean()).filter(row => row.task.plannedEndDate <= new Date());
-      let monthlyLabor = {};
-      result.forEach(d => {
-        let end = new Date(d.task.plannedEndDate);
-        let start = new Date(d.task.plannedStartDate)
-        let days = differenceInDays(end, start);
-        let initial = new Date(start);
-        let count = 0;
-
-
-        let perDayCost = d.total / days
-        let prevDate = new Date(initial);
-        while (initial <= end) {
-          if (prevDate.getMonth() < initial.getMonth() || differenceInDays(end, initial) == 0) {
-            let ref = monthlyLabor[startOfMonth(initial)];
-            let total = (count * perDayCost);
-            if (!ref) monthlyLabor[startOfMonth(initial)] = { actual: { total: 0, qty: 0 }, planned: { total, qty: count } };
-            else {
-              monthlyLabor[startOfMonth(initial)].planned.total += total;
-              monthlyLabor[startOfMonth(initial)].planned.qty += count;
-            }
-            count = 1;
-          }
-          prevDate = new Date(initial);
-          count++;
-          initial = addDays(initial, 1)
-        }
-      });
-
-      query = [
-        {
-          $match: {
-            $and: [{ project }, { boqType: '1' }]
-          }
-        },
-        {
-          $group: {
-            _id: {
-              month: { $dateToString: { date: "$monitoringDate", format: "%m-01-%Y" } },
-              task: "$task"
-            },
-            monitoringDate: { $last: "$monitoringDate" },
-            total: { $sum: { $multiply: ['$actualCostPerUnit', '$quantity'] } }
-          }
-        },
-        {
-          $lookup:
-          {
-            from: "tasks",
-            localField: "_id.task",
-            foreignField: "_id",
-            as: "task"
-          }
-        },
-
-
-      ];
-
-      result = await taskUtilizedResourceModel.aggregate(query);
-      // result = await taskUtilizedResourceModel.find({project, boqType: 1}).populate('task',['plannedCostPerDay','actualStartDate']).lean()
-      result.forEach((row, i) => {
-        let month = new Date(row._id.month);
-        let fromDate = row.task[0].actualStartDate;
-        if (result[i - 1] && result[i - 1].task.toString() == row._id.task.toString()) fromDate = result[i - 1].monitoringDate;
-        let days = differenceInDays(row.monitoringDate, fromDate);
-        let total = row.total;
-        let ref = monthlyLabor[month];
-        if (!monthlyLabor[month] || !monthlyLabor[month].planned) monthlyLabor[month] = { planned: { total: 0, qty: 0 }, actual: { total, qty: days } };
-        else {
-          monthlyLabor[month].actual.total += total;
-          monthlyLabor[month].actual.qty += days;
-        }
-      })
-
+      } else datewiseActualBreakup = [{ actualCost: 0 }];
       let data = {
-        monitorings,
-        estimateAtCompletion,
-        TCPI,
-        scheduleVarianceInDays,
-        scheduleVariance,
-        scheduleStatus,
-        costVariance,
-        costStatus,
-        performanceData,
-        CPI,
-        SPI,
-        voc_actual,
-        voc_estimated,
-        acv,
-        varianceAtCompletion,
-        budAtComp,
-        tasks,
         completionDate,
-        monitoringsCost,
-        monthlyLaborData,
-        EVMValuesPerMonth,
-        EVMValuesPerMonth2,
+        EVMValuesPerMonth2: graphData,
       };
       return res.json({ success: true, data: data });
     } catch (error) {
@@ -2863,7 +4521,7 @@ module.exports = {
       respondWithError(res, error, 'Error when getting task.');
     }
   },
-  kpiDashboardByProjectId: async function (req, res) {
+  kpiByProjectId: async function (req, res) {
     const DATETIME = dateFormat(new Date(), 'yyyy-mm-dd HH:MM:ss');
     try {
       var project = ObjectId(req.params.id);
@@ -2940,7 +4598,7 @@ module.exports = {
       let datewiseActualBreakup = monitoringsCost.map(m => ({ date: m._id, actualCost: 0, actualCompletion: 0, cumulativeActualCompletion: 0, cumulativeActualCost: 0 }));
 
 
-      let lastMonitoringIndex=0;
+      let lastMonitoringIndex = 0;
       if (monitoringsCost.length > 0) {
         datewiseActualBreakup = monitoringsCost.map(m => ({ date: m._id, actualCost: 0, actualCompletion: 0, cumulativeActualCompletion: 0, cumulativeActualCost: 0 }));
         // if (monitoringsCost.length == 0) monitoringsCost.push({ date: new Date(), actualCost: 0, monitoringWeight: 0 });
@@ -2965,24 +4623,24 @@ module.exports = {
       if (datewiseBreakup.length > 0) {
         budAtComp = datewiseBreakup[datewiseBreakup.length - 1].cumulativePlannedCost;
       } else {
-       
+
         budAtComp = projectData.totalEstimatedBudget;
       }
 
 
-     
-      let plannedValue=0;
-      let earnedValue =0;
-      let actualCost =  0;
+
+      let plannedValue = 0;
+      let earnedValue = 0;
+      let actualCost = 0;
       let plannedIndex = monitoringsCost.length ? datewiseBreakup.findIndex(breakup => breakup.date.toLocaleDateString() == monitoringsCost[lastMonitoringIndex]._id.toLocaleDateString()) : 0;
-      if(datewiseBreakup.length>0){
-         lastMonitoringIndex = monitoringsCost.length - 1;
-        
-         plannedValue = datewiseBreakup[plannedIndex].cumulativePlannedCost;
-         earnedValue = datewiseActualBreakup.length ? datewiseActualBreakup[lastMonitoringIndex].cumulativeEarnedValue : 0;
-         actualCost = datewiseActualBreakup.length ? datewiseActualBreakup[lastMonitoringIndex].cumulativeActualCost : 0;
+      if (datewiseBreakup.length > 0) {
+        lastMonitoringIndex = monitoringsCost.length - 1;
+
+        plannedValue = datewiseBreakup[plannedIndex].cumulativePlannedCost;
+        earnedValue = datewiseActualBreakup.length ? datewiseActualBreakup[lastMonitoringIndex].cumulativeEarnedValue : 0;
+        actualCost = datewiseActualBreakup.length ? datewiseActualBreakup[lastMonitoringIndex].cumulativeActualCost : 0;
       }
-      
+
 
       let currentMonthActualCost = 0, currentMonthPlannedCost = 0;
 
@@ -3025,12 +4683,12 @@ module.exports = {
         completionDate || new Date()
       );
       let totalPlannedDays;
-      if(rootTask){
-         totalPlannedDays = businessDays(rootTask.plannedStartDate, rootTask.plannedEndDate);
-      }else {
-         totalPlannedDays = businessDays(projectData.expectedStartDate, projectData.expectedEndDate);  
+      if (rootTask) {
+        totalPlannedDays = businessDays(rootTask.plannedStartDate, rootTask.plannedEndDate);
+      } else {
+        totalPlannedDays = businessDays(projectData.expectedStartDate, projectData.expectedEndDate);
       }
-     
+
       let performanceData = {
         PerformanceCostData: {
           ActualCost: currentMonthActualCost, // actual cost for the current month
@@ -3561,6 +5219,7 @@ module.exports = {
       let currentProject = { project };
 
       let tasks = await taskModel
+        // .find({ project, workPackage: true })
         .find({ project, workPackage: true })
         .populate('projectLocation', 'pathId')
         .sort({ plannedStartDate: 1 })
@@ -4576,17 +6235,27 @@ module.exports = {
         if (!task) respondWithNotFound(res, 'No such task');
 
         taskModel.insertMany(req.body, function (err, data) {
-          console.log(err)
           if (err) respondWithError(res, err, 'Error when creating task.');
           const LOGMESSAGE = DATETIME + '|task created';
           log.write('INFO', LOGMESSAGE);
           // return res.status(201).json(task);
-          return res.json({
-            success: true,
-            msg: req.body.length + ' task(s) created',
-            data: data
+          projectModel.updateOne({ _id: req.body[0].project }, {
+            $set: {
+              expectedStartDate: req.body[0].plannedStartDate,
+              expectedEndDate: req.body[0].plannedEndDate,
+              totalEstimatedBudget: req.body[0].plannedCost
+            }
+          }, function (err, d) {
+            return res.json({
+              success: true,
+              msg: req.body.length + ' task(s) created',
+              data: data
+            });
           });
+
         });
+
+
       });
     } catch (error) {
       console.log(error)

@@ -2,7 +2,7 @@ const dateFormat = require("dateformat");
 
 const monitoringModel = require("../models/monitoringModel");
 const taskModel = require("../models/taskModel");
-
+var ObjectId = require('mongoose').Types.ObjectId;
 const log = require('../lib/logger');
 
 module.exports = {
@@ -75,10 +75,15 @@ module.exports = {
 
   },
   showPopulatedByProjectId: function (req, res) {
+    const DATETIME = dateFormat(new Date(), "yyyy-mm-dd HH:MM:ss");
     try {
-      const DATETIME = dateFormat(new Date(), "yyyy-mm-dd HH:MM:ss");
+
       var id = req.params.id;
-      monitoringModel.find({ project: id }).populate('task',['projectLocation' ,'actualStartDate', 'actualEndDate','completed']).exec(function (err, monitoring) {
+
+    //   monitoringModel.aggregate([{ $match: { project: ObjectId(id) } }, { $lookup: { from: "projectlocations", localField: "project", foreignField: "project", as: "ProjectLocation" } },
+    //  {$unwind: {path: "$ProjectLocation"}}, { $lookup: { from: "tasks", localField: "task", foreignField: "_id", as: "Tasks" } }], function (err, monitoring) {
+                    
+         monitoringModel.find({ project: id }).populate('task',['projectLocation' ,'actualStartDate', 'actualEndDate','completed']).exec(function (err, monitoring) {
         if (err) {
           const LOGMESSAGE = DATETIME + "|" + err.message;
           log.write("ERROR", LOGMESSAGE);
@@ -149,7 +154,7 @@ module.exports = {
       });
     }
   },
-  
+
   showMonitoringByProjectId: function (req, res) {
     try {
       const DATETIME = dateFormat(new Date(), "yyyy-mm-dd HH:MM:ss");

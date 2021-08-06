@@ -46,17 +46,31 @@ router.get("/wptasksByProject/:id", taskController.dashboardByProjectId);
 router.get("/gisDashboard/:id", taskController.gisDashboardByProjectId);
 router.get("/monthlyLabor/:id", taskController.monthlyLaborByProjectId);
 router.get("/wpVariance/:id", taskController.wpVarianceByProjectId);
+
 router.get("/evmDashboard/:id", taskController.evmDashboardByProjectId);
-router.get("/forecastDashboard/:id", taskController.forecastDashboardByProjectId);
-router.get("/kpiDashboard/:id", taskController.kpiDashboardByProjectId);
+router.get("/forecastByProject/:id", taskController.forecastByProjectId);
+router.get("/forecastByProgram/:id", taskController.forecastByProgramId);
+router.get("/forecastByPortfolio/:id", taskController.forecastByPortfolioId);
+
+router.get("/kpiByProject/:id", taskController.kpiByProjectId);
+router.get("/kpiByProgram/:id", taskController.kpiByProgramId);
+router.get("/kpiByPortfolio/:id", taskController.kpiByPortfolioId);
+
 router.get("/openByProjectId/:id", taskController.openByProjectId);
 router.get("/workedByProjectId/:id", taskController.workedByProjectId);
 router.get("/workpackagesByProjectId/:id", taskController.workpackagesByProjectId);
 router.put("/cron/:id", taskController.markMonitorings);
-router.get("/dashboardByProgram/:id", taskController.dashboardByProgramId);
-router.get("/dashboardByPortfolio/:id", taskController.dashboardByPortfolioId);
+
 router.get("/programGovernance/:id", taskController.programGovernance);
-router.get("/portfolioGovernance", taskController.portfolioGovernance);
+router.get("/portfolioGovernance/:id", taskController.portfolioGovernance);
+
+router.get("/projectMonitoringByProgram/:id", taskController.projectMonitoringByProgramId);
+router.get("/programMonitoringByPortfolio/:id", taskController.programMonitoringByPortfolioId);
+
+
+
+router.get("/dashboardByPortfolio/:id", taskController.dashboardByPortfolioId);
+
 router.get("/projectsByPortfolio/:id", taskController.projectsByPortfolioId);
 router.get("/portfoliosByManager/:id", taskController.portfoliosByManagerId);
 router.get("/programsByPortfolio/:id", taskController.programsByPortfolioId);

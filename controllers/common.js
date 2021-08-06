@@ -48,24 +48,25 @@ const businessDays = (curDate, endDate) => {
 }
 const alpha = () => 0.5;
 const beta = () => 0.3;
-const At = (D, t, A, T) => {
-    if (A.length > t) return A[t];
+ const At = (D, t, A, T) => {
+    if (A[t]) return A[t];
     else {
-        A[t] = (alpha() * D[t]) + ((1 - alpha()) * (A[t - 1] + T[t - 1]));
+        A[t] = (alpha() * D[t-1]) + ((1 - alpha()) * (A[t-1 ] + T[t-1]));
         return A[t];
-    }
+   }
 };
 
 const Tt = (D, t, A, T) => {
-    if (T.length > t) return T[t];
+    if (T[t]) return T[t];
     else {
-        T[t] = ((beta() * (At(D, t, A, T) - A[t - 1])) + ((1 - beta()) * T[t - 1]));
+        // T[t] = ((beta() * (At(D, t-1, A, T) - A[t - 1])) + ((1 - beta()) * T[t - 1]));
+        T[t] = ((beta() * (A[t] - A[t - 1])) + ((1 - beta()) * T[t - 1]));
         return T[t];
-    }
+   }
 
 };
 
-getFt = (t, D, A, T) => At(D, t - 1, A, T) + Tt(D, t - 1, A, T);
+getFt = (t, D, A, T) => At(D, t, A, T) + Tt(D, t, A, T);
 
 
 const cycleDays = (frequency, startDate) => ({

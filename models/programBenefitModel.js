@@ -7,7 +7,7 @@ var programBenefitSchema = new schema(
     program: { type: mongoose.Schema.ObjectId, ref: 'Program', required:true},
     nature: { type: mongoose.Schema.ObjectId, ref: 'BenefitsNature',  required: true },
     description: { type: String, required: true },
-    value: { type: String, required: true },
+    amount: { type: String, required: true },
     measurementApproach: { type: String, required: true },
     notes: { type: String, required: true },
     benefitStartDate: { type: Date },

@@ -8,17 +8,15 @@ var programSchema = new schema(
             ref: 'Portfolio',
             default: null
         },
-        name: {type: String, unique: true, required: true},
-        startDate: {type: Date, required: true},
-        endDate: {type: Date, required: true},
-        periodFrom: {type: String, required: true},
-        periodTo: {type: String, required: true},
-        status: {type: String, required: true},
-        currency: {
-            type: String,
-            ref: "Currency",
-        },
-        budgetRequired: {type: String, required: true},
+        name: { type: String, unique: true, required: true },
+        startDate: { type: Date, required: true },
+        endDate: { type: Date, required: true },
+        status: { type: String , default: "Approved"},
+        // currency: {
+        //     type: String,
+        //     ref: "Currency",
+        // },
+        budgetRequired: { type: String, required: true },
         manager: {
             type: mongoose.Schema.ObjectId,
             ref: 'User',
@@ -34,12 +32,12 @@ var programSchema = new schema(
             type: mongoose.Schema.ObjectId,
             ref: 'User'
         },
-        createdDate: {type: Date, default: Date.now},
+        createdDate: { type: Date, default: Date.now },
         updatedBy: {
             type: mongoose.Schema.ObjectId,
             ref: 'User'
         },
-        updateDate: {type: Date}
+        updateOn: { type: Date }
 
     }
 );

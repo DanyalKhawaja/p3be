@@ -142,7 +142,7 @@ module.exports = {
   showByProgramId: function (req, res) {
     try {
       const DATETIME = dateFormat(new Date(), "yyyy-mm-dd HH:MM:ss");
-      var id = '5fff0c788ff5fa60f016a820' || req.params.id;
+      var id =  req.params.id;
       projectModel.find({ program: id }, function (err, project) {
         if (err) {
           const LOGMESSAGE = DATETIME + "|" + err.message;

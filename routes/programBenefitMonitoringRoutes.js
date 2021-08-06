@@ -18,6 +18,8 @@ router.get("/byBenefit/:id",  programBenefitMonitoringController.showByBenefit);
  * GET programBenefitMonitoring By Program ID
  */
 router.get("/byProgram/:id",  programBenefitMonitoringController.showByProgram);
+
+router.get("/chartByProgram/:id", programBenefitMonitoringController.chartByProgram);
 /*
  * GET programBenefitMonitoring By  ID
  */

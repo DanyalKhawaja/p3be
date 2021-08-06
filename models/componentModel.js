@@ -8,7 +8,7 @@ var componentSchema = new schema(
       ref: 'Program',
       default: null
     },
-    name: { type: String, unique: true, required: true },
+    name: { type: String,  required: true },
     startDate: { type: Date, required: true },
     endDate: { type: Date, required: true },
     locked: {type: Boolean, default: false},

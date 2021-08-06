@@ -19,6 +19,7 @@ const projectTypeRoutes = require('./routes/projectTypeRoutes')
 const resourceTypeRoutes = require('./routes/resourceTypeRoutes')
 const resourceRoutes = require('./routes/resourceRoutes')
 const portfolioRoutes = require('./routes/portfolioRoutes');
+const portfolioCycleRoutes = require('./routes/portfolioCycleRoutes');
 const programRoutes = require('./routes/programRoutes');
 const projectRoutes = require('./routes/projectRoutes')
 const projectResourceRoutes = require('./routes/projectResourceRoutes')
@@ -70,8 +71,8 @@ const app = express();
 
 app.use(cors());
 app.use(logger("dev"));
-app.use(express.json({limit: '50mb'}));
-app.use(express.urlencoded({limit: '50mb', extended: false }));
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ limit: '50mb', extended: false }));
 app.use(cookieParser());
 app.use(express.static(path.join(__dirname, "public")));
 
@@ -90,9 +91,11 @@ app.use("/subscription", passport.authenticate('jwt', { session: false }), subsc
 app.use('/role', passport.authenticate('jwt', { session: false }), roleRoutes);
 app.use('/currency', passport.authenticate('jwt', { session: false }), currencyRoutes);
 app.use("/projecttype", passport.authenticate('jwt', { session: false }), projectTypeRoutes);
+
+app.use("/portfolio", passport.authenticate('jwt', { session: false }), portfolioRoutes);
 app.use("/resourcetype", passport.authenticate('jwt', { session: false }), resourceTypeRoutes);
 app.use("/resource", passport.authenticate('jwt', { session: false }), resourceRoutes)
-app.use('/portfolio', passport.authenticate('jwt', { session: false }), portfolioRoutes)
+app.use('/portfolioCycle', passport.authenticate('jwt', { session: false }), portfolioCycleRoutes)
 app.use('/program', passport.authenticate('jwt', { session: false }), programRoutes)
 app.use('/project', passport.authenticate('jwt', { session: false }), projectRoutes)
 app.use('/projectResource', passport.authenticate('jwt', { session: false }), projectResourceRoutes)
@@ -139,6 +142,6 @@ app.use("/pptCVsC", passport.authenticate('jwt', { session: false }), pptCVsCRou
 
 
 
-app.use("/component",passport.authenticate('jwt', { session: false }),componentRoutes)
+app.use("/component", passport.authenticate('jwt', { session: false }), componentRoutes)
 module.exports = app;
 

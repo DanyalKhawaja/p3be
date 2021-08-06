@@ -7,11 +7,6 @@ var projectSchema = new schema({
         type: mongoose.Schema.ObjectId,
         ref: "ProjectType",
     },
-    component: {
-        type: mongoose.Schema.ObjectId,
-        default: null,
-        ref: "Component",
-    },
     program: {
         type: mongoose.Schema.ObjectId,
         default: null,
@@ -56,6 +51,10 @@ var projectSchema = new schema({
     graphLabels: {
         type: Array,
         default: [],
+    },
+    milestone: {
+        type: Boolean,
+        default: false
     },
     createdBy: {
         type: mongoose.Schema.ObjectId,
