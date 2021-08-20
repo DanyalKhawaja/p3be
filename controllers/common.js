@@ -9,6 +9,15 @@ const createMonthlyArray = (start, end = add(new Date(), { months: 1 }),config) 
     }));
 };
 
+const createMonthlyDateArray = (start, end = add(new Date(), { months: 1 }),config) => {
+    let monthsList = eachMonthOfInterval({ start, end });
+    // return monthsList.map(month => ({
+    //     _id: month,...config
+        
+    // }));
+};
+
+
 
 const createDates = (start, end) => {
     let dates = eachDayOfInterval({ start, end });
@@ -37,7 +46,8 @@ const isBusinessDay = date => {
     return !((weekday == 6) || (weekday == 0));
 }
 
-const businessDays = (curDate, endDate) => {
+const businessDays = (curDateOrg, endDate) => {
+    let curDate = new Date(curDateOrg);
     var count = 0;
     while (curDate <= endDate) {
         if (isBusinessDay(curDate))
@@ -129,4 +139,4 @@ function respondWithNotFound(res, msg) {
 }
 
 
-module.exports = { isBusinessDay, createDates, createMonthlyArray, respondWithError, nextCycle, getFt, businessDays };
+module.exports = { isBusinessDay, createMonthlyDateArray,createDates, createMonthlyArray, respondWithError, nextCycle, getFt, businessDays };

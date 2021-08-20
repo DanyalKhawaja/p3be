@@ -9,8 +9,9 @@ const portfolioCycleController = require("../controllers/portfolioCycleControlle
  * GET
  */
 router.get("/", portfolioCycleController.list);
-router.get("/byUser/:id", portfolioCycleController.showByUserId);
-router.get("/programs/:portfolioCycleId/:portfolioId/:startDate/:endDate", portfolioCycleController.showPortfolioCyclePrograms);
+router.get("/:id", portfolioCycleController.showByPortfolioId);
+router.get("/byPortfolio/:id", portfolioCycleController.showByPortfolioId);
+router.get("/programs/:portfolioId/:portfolioCycleId/:startDate/:endDate", portfolioCycleController.showPortfolioCyclePrograms);
 router.get("/staticprograms/:portfolioId/:startDate/:endDate", portfolioCycleController.showPortfolioStaticPrograms);
 /*
  * GET Profile By Portfolio ID

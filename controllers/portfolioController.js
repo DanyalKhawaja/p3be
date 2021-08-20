@@ -1,7 +1,7 @@
 const dateFormat = require("dateformat");
 
 const portfolioModel = require("../models/portfolioModel");
-
+var ObjectId = require('mongoose').Types.ObjectId;
 const log = require('../lib/logger');
 
 module.exports = {
@@ -9,7 +9,6 @@ module.exports = {
     try {
       const DATETIME = dateFormat(new Date(), "yyyy-mm-dd HH:MM:ss");
       portfolioModel.find(function (err, portfolio) {
-        console.log('list');
         if (err) {
           const LOGMESSAGE = DATETIME + "|" + err.message;
           log.write("ERROR", LOGMESSAGE);
@@ -77,7 +76,7 @@ module.exports = {
     try {
       const DATETIME = dateFormat(new Date(), "yyyy-mm-dd HH:MM:ss");
       var id = req.params.id;
-      portfolioModel.find({ manager: id }).populate('manager', 'username').exec(function (err, portfolio) {
+      portfolioModel.find({ manager: ObjectId(id) },function (err, portfolio) {
         if (err) {
           const LOGMESSAGE = DATETIME + "|" + err.message;
           log.write("ERROR", LOGMESSAGE);
@@ -98,8 +97,7 @@ module.exports = {
         const LOGMESSAGE = DATETIME + "|portfolio Found";
         log.write("INFO", LOGMESSAGE);
         return res.json({ success: true, data: portfolio });
-        // return res.json(portfolio);
-      });
+      }).populate('manager', 'username');
     } catch (error) {
       const LOGMESSAGE = DATETIME + "|" + error.message;
       log.write("ERROR", LOGMESSAGE);

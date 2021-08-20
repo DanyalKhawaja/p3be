@@ -374,7 +374,12 @@ module.exports = {
     }
 
   },
+  linkedProjects: function (req, res) {
+    projectModel.find({ program:  ObjectId(req.params.programId) }, function (err, projects) {
+      return res.json({ success: true, data: projects });
+    }).lean();
 
+  },
   checkedProjects: function (req, res) {
     // let query = [{ $match: { taskId: "0", "plannedStartDate": { $gte: new Date(req.params.startDate) }, "plannedEndDate": { $lte: new Date(req.params.endDate) } } }, { $lookup: { from: 'projects', localField: 'project', foreignField: '_id', as: 'Project' } }, { $unwind: { path: "$Project" } }, { $match: { 'Project.program': { $in: [null, Object(req.params.programId)] } } },
     // { $group: { _id: { _id: "$Project._id", name: "$Project.name", startDate: "$Project.expectedStartDate", endDate: "$Project.expectedEndDate" }, plannedTotal: { $sum: "$plannedCost" }, actualTotal: { $sum: "$actualCost" } } }];

@@ -73,11 +73,11 @@ module.exports = {
     }
 
   },
-  showByUserId: function (req, res) {
+  showByPortfolioId: function (req, res) {
     try {
       const DATETIME = dateFormat(new Date(), "yyyy-mm-dd HH:MM:ss");
       var id = req.params.id;
-      portfolioCycleModel.find({ manager: id }).populate('manager', 'username').populate('portfolio').exec(function (err, portfolio) {
+      portfolioCycleModel.find({ portfolio: ObjectId(id) },function (err, portfolioCycle) {
         if (err) {
           const LOGMESSAGE = DATETIME + "|" + err.message;
           log.write("ERROR", LOGMESSAGE);
@@ -87,7 +87,7 @@ module.exports = {
             error: err
           });
         }
-        if (!portfolio) {
+        if (!portfolioCycle) {
           const LOGMESSAGE = DATETIME + "|No such portfolioCycle";
           log.write("ERROR", LOGMESSAGE);
           return res.status(404).json({
@@ -98,8 +98,8 @@ module.exports = {
         const LOGMESSAGE = DATETIME + "|portfolioCycleFound";
         log.write("INFO", LOGMESSAGE);
         return res.json({ success: true, data: portfolioCycle});
-        // return res.json(portfolio);
-      });
+
+      }).populate('manager', 'username').populate('portfolio','name');
     } catch (error) {
       const LOGMESSAGE = DATETIME + "|" + error.message;
       log.write("ERROR", LOGMESSAGE);
@@ -111,6 +111,7 @@ module.exports = {
     }
 
   },
+
   showPortfolioCyclePrograms: function (req, res) {
     const DATETIME = dateFormat(new Date(), "yyyy-mm-dd HH:MM:ss");
     try {
@@ -266,7 +267,7 @@ module.exports = {
     try {
       const DATETIME = dateFormat(new Date(), "yyyy-mm-dd HH:MM:ss");
       var id = req.params.id;
-      portfolioCycleModel.findOne({ _id: id }, function (err, portfolio) {
+      portfolioCycleModel.findOne({ _id: ObjectId(id) }, function (err, portfolioCycle) {
         if (err) {
           const LOGMESSAGE = DATETIME + "|" + err.message;
           log.write("ERROR", LOGMESSAGE);
@@ -276,7 +277,7 @@ module.exports = {
             error: err
           });
         }
-        if (!portfolio) {
+        if (!portfolioCycle) {
           const LOGMESSAGE = DATETIME + "|No such portfolioCycleto update:" + id;
           log.write("ERROR", LOGMESSAGE);
           return res.status(404).json({
@@ -284,21 +285,21 @@ module.exports = {
             msg: "No such portfolioCycle"
           });
         }
-        portfolio.status = req.body.status ? req.body.status : portfolio.status;
-        portfolio.portfolio = req.body.portfolio ? req.body.portfolio : portfolio.portfolio;
-        portfolio.programs = req.body.programs ? req.body.programs : portfolio.programs;
-        portfolio.startDate = req.body.startDate ? req.body.startDate : portfolio.startDate;
-        portfolio.endDate = req.body.endDate ? req.body.endDate : portfolio.endDate;
-        portfolio.budget = req.body.budget ? req.body.budget : portfolio.budget;
-        portfolio.periodFrom = req.body.periodFrom ? req.body.periodFrom : portfolio.periodFrom;
-        portfolio.periodTo = req.body.periodTo ? req.body.periodTo : portfolio.periodTo;
-        portfolio.manager = req.body.manager ? req.body.manager : portfolio.manager;
-        portfolio.createdBy = req.body.createdBy ? req.body.createdBy : portfolio.createdBy;
-        portfolio.createDate = req.body.createDate ? req.body.createDate : portfolio.createDate;
-        portfolio.updateDate = req.body.updateDate ? req.body.updateDate : portfolio.updateDate;
-        portfolio.updatedBy = req.body.updatedBy ? req.body.updatedBy : portfolio.updatedBy;
+        portfolioCycle.status = req.body.status ? req.body.status : portfolioCycle.status;
+        portfolioCycle.portfolioCycle = req.body.portfolioCycle ? req.body.portfolioCycle : portfolioCycle.portfolioCycle;
+        portfolioCycle.programs = req.body.programs ? req.body.programs : portfolioCycle.programs;
+        portfolioCycle.startDate = req.body.startDate ? req.body.startDate : portfolioCycle.startDate;
+        portfolioCycle.endDate = req.body.endDate ? req.body.endDate : portfolioCycle.endDate;
+        portfolioCycle.budget = req.body.budget ? req.body.budget : portfolioCycle.budget;
+        portfolioCycle.periodFrom = req.body.periodFrom ? req.body.periodFrom : portfolioCycle.periodFrom;
+        portfolioCycle.periodTo = req.body.periodTo ? req.body.periodTo : portfolioCycle.periodTo;
+        portfolioCycle.manager = req.body.manager ? req.body.manager : portfolioCycle.manager;
+        portfolioCycle.createdBy = req.body.createdBy ? req.body.createdBy : portfolioCycle.createdBy;
+        portfolioCycle.createDate = req.body.createDate ? req.body.createDate : portfolioCycle.createDate;
+        portfolioCycle.updateDate = req.body.updateDate ? req.body.updateDate : portfolioCycle.updateDate;
+        portfolioCycle.updatedBy = req.body.updatedBy ? req.body.updatedBy : portfolioCycle.updatedBy;
 
-        portfolio.save(function (err, portfolio) {
+        portfolioCycle.save(function (err, portfolioCycle) {
           if (err) {
             const LOGMESSAGE = DATETIME + "|" + err.message;
             log.write("ERROR", LOGMESSAGE);
@@ -308,9 +309,9 @@ module.exports = {
               error: err
             });
           }
-          const LOGMESSAGE = DATETIME + "|Updated portfolio:" + id;
+          const LOGMESSAGE = DATETIME + "|Updated portfolioCycle:" + id;
           log.write("INFO", LOGMESSAGE);
-          return res.json({ success: true, msg: "portfolioCycleis updated", data: portfolioCycle});
+          return res.json({ success: true, msg: "portfolioCycle is updated", data: portfolioCycle});
           // return res.json(portfolio);
         });
       });
