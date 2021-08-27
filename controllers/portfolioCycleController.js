@@ -218,15 +218,16 @@ module.exports = {
   },
 
   create: function (req, res) {
+    const DATETIME = dateFormat(new Date(), "yyyy-mm-dd HH:MM:ss");
     try {
-      const DATETIME = dateFormat(new Date(), "yyyy-mm-dd HH:MM:ss");
+     
       var portfolioCycle= new portfolioCycleModel({
         portfolio: req.body.portfolio,
         status: req.body.status,
         startDate: req.body.startDate,
         programs: req.body.programs,
         endDate: req.body.endDate,
-        budget: req.body.budget,
+        totalEstimatedBudget: req.body.totalEstimatedBudget,
         periodFrom: req.body.periodFrom,
         periodTo: req.body.periodTo,
         manager: req.body.manager,
@@ -236,7 +237,7 @@ module.exports = {
         updatedBy: req.body.updatedBy
       });
 
-      portfolio.save(function (err, portfolio) {
+      portfolioCycle.save(function (err, data) {
         if (err) {
           const LOGMESSAGE = DATETIME + "|" + err.message;
           log.write("ERROR", LOGMESSAGE);
@@ -249,7 +250,7 @@ module.exports = {
         const LOGMESSAGE = DATETIME + "|portfolioCycle created";
         log.write("INFO", LOGMESSAGE);
         // return res.status(201).json(portfolio);
-        return res.json({ success: true, msg: "portfolioCycle is created", data: portfolioCycle});
+        return res.json({ success: true, msg: "portfolioCycle is created", data});
       });
     } catch (error) {
       const LOGMESSAGE = DATETIME + "|" + error.message;
@@ -290,7 +291,7 @@ module.exports = {
         portfolioCycle.programs = req.body.programs ? req.body.programs : portfolioCycle.programs;
         portfolioCycle.startDate = req.body.startDate ? req.body.startDate : portfolioCycle.startDate;
         portfolioCycle.endDate = req.body.endDate ? req.body.endDate : portfolioCycle.endDate;
-        portfolioCycle.budget = req.body.budget ? req.body.budget : portfolioCycle.budget;
+        portfolioCycle.totalEstimatedBudget = req.body.totalEstimatedBudget ? req.body.totalEstimatedBudget : portfolioCycle.totalEstimatedBudget;
         portfolioCycle.periodFrom = req.body.periodFrom ? req.body.periodFrom : portfolioCycle.periodFrom;
         portfolioCycle.periodTo = req.body.periodTo ? req.body.periodTo : portfolioCycle.periodTo;
         portfolioCycle.manager = req.body.manager ? req.body.manager : portfolioCycle.manager;
@@ -299,7 +300,7 @@ module.exports = {
         portfolioCycle.updateDate = req.body.updateDate ? req.body.updateDate : portfolioCycle.updateDate;
         portfolioCycle.updatedBy = req.body.updatedBy ? req.body.updatedBy : portfolioCycle.updatedBy;
 
-        portfolioCycle.save(function (err, portfolioCycle) {
+        portfolioCycle.save(function (err, data) {
           if (err) {
             const LOGMESSAGE = DATETIME + "|" + err.message;
             log.write("ERROR", LOGMESSAGE);
@@ -311,7 +312,7 @@ module.exports = {
           }
           const LOGMESSAGE = DATETIME + "|Updated portfolioCycle:" + id;
           log.write("INFO", LOGMESSAGE);
-          return res.json({ success: true, msg: "portfolioCycle is updated", data: portfolioCycle});
+          return res.json({ success: true, msg: "portfolioCycle is updated", data});
           // return res.json(portfolio);
         });
       });

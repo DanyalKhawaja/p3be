@@ -101,6 +101,7 @@ module.exports = {
     }
 
   },
+
   showByComponentId: function (req, res) {
     try {
       const DATETIME = dateFormat(new Date(), "yyyy-mm-dd HH:MM:ss");
@@ -489,8 +490,10 @@ module.exports = {
         projectLocation: req.body.projectLocation,
         managementReserve: req.body.managementReserve,
         totalEstimatedBudget: req.body.totalEstimatedBudget,
+        milestone: req.body.milestone,
         expectedStartDate: req.body.expectedStartDate,
         expectedEndDate: req.body.expectedEndDate,
+        component: req.body.component,
         currency: req.body.currency,
         notes: req.body.notes,
         graphLabels: req.body.graphLabels,

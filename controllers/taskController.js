@@ -6,7 +6,7 @@ const _ = require('lodash');
 
 
 
-const { isBusinessDay, createDates, createMonthlyArray, createMonthlyDateArray, respondWithError, nextCycle, getFt, businessDays } = require('./common');
+const { isBusinessDay, createKPIDates, createDates, createMonthlyArray, createKPIMonthlyArray, createMonthlyDateArray, respondWithError, nextCycle, getFt, businessDays } = require('./common');
 
 const portfolioModel = require('../models/portfolioModel');
 const portfolioCycleModel = require('../models/portfolioCycleModel');
@@ -58,7 +58,7 @@ module.exports = {
       respondWithError(res, error, 'Error when getting task.');
     }
   },
-  kpiByPortfolioId: async function (req, res) {
+  kpiByPortfolioIdorg: async function (req, res) {
     const DATETIME = dateFormat(new Date(), 'yyyy-mm-dd HH:MM:ss');
     try {
       let portfolioCycleId = req.params.id;
@@ -161,8 +161,8 @@ module.exports = {
       let currentMonthPlannedCost = currentMonthRow ? currentMonthRow.plannedCost : 0;
       let budAtComp = monthwiseData[monthwiseData.length - 1].cumulativePlannedCost;
 
-      let totalPlannedDays = portfolioSchedule[portfolioCycleId].portfolio;
-      let actualDaysSinceExecution = portfolioSchedule[portfolioCycleId].portfolioActualDays;
+      let totalPlannedDays = portfolioSchedule[portfolioCycleId].portfolioPlannedDays;
+      let actualDays = portfolioSchedule[portfolioCycleId].portfolioActualDays;
 
 
       let performanceData = {
@@ -182,7 +182,7 @@ module.exports = {
         },
         PerformanceScheduleData: {
           TotalPlannedDays: totalPlannedDays,
-          TotalDaysSpent: actualDaysSinceExecution,
+          TotalDaysSpent: actualDays,
           PurpleRange: [0, totalPlannedDays],
           YellowRange: [totalPlannedDays, totalPlannedDays * 1.25],
           RedRange: [totalPlannedDays * 1.25, totalPlannedDays * 1.75]
@@ -705,6 +705,128 @@ module.exports = {
       respondWithError(res, error, 'Error when getting task.');
     }
   },
+  kpiByPortfolioId: async function (req, res) {
+    const DATETIME = dateFormat(new Date(), 'yyyy-mm-dd HH:MM:ss');
+    try {
+      let portfolioCycleId = req.params.id;
+      let portfolioCycleData = await portfolioCycleModel.findById(portfolioCycleId).lean();
+      let { programs } = portfolioCycleData;
+      var projects = (await projectModel.find({ program: { $in: programs } }, { _id: 1 }).lean()).map((d) => d._id);
+      let cycleStart = new Date(portfolioCycleData.startDate)
+      cycleStart.setHours(0);
+      let cycleEnd = new Date(portfolioCycleData.endDate)
+      cycleEnd.setHours(23,59,59);
+      let portfolioSchedule = {
+        [portfolioCycleId]: {
+          portfolioActualDays: businessDays(cycleStart, new Date()),
+          portfolioPlannedDays: businessDays(cycleStart, cycleEnd)
+        }
+      }
+
+      let allWPTasks = await taskModel
+        .find({ project: { $in: projects }, workPackage: true})
+        .sort({ plannedStartDate: 1 })
+        .lean();
+
+
+      let datewiseBreakup = allWPTasks.length > 0 ? createKPIDates(cycleStart, cycleEnd) : [];
+      let monthwiseData = createKPIMonthlyArray(cycleStart, cycleEnd);
+      let monthwiseIndex = monthwiseData.reduce((m, c, i) => { m[c._id] = i; return m }, {});
+      allWPTasks.forEach(task => {
+        let i = 0;
+        task.plannedStartDate.setHours(0);
+        task.plannedEndDate.setHours(23, 59, 59);
+        while (datewiseBreakup[i] && datewiseBreakup[i].date <= task.plannedEndDate &&  task.plannedStartDate >= cycleStart &&  task.plannedEndDate <= cycleEnd) {
+          if (datewiseBreakup[i].date >= task.plannedStartDate) {
+            if (isBusinessDay(datewiseBreakup[i].date)) {
+              datewiseBreakup[i].plannedCost += task.plannedCostPerDay;
+            }
+          }
+          i++;
+        }
+      });
+
+      datewiseBreakup.forEach(d => {
+        let index = monthwiseIndex[startOfMonth(d.date)];
+        if (index > -1) {
+          monthwiseData[index].planned += d.plannedCost;
+          if (isBusinessDay(d.date)) monthwiseData[index].days += 1;
+        }
+      });
+
+
+
+      let monthwiseActual = await monitoringModel.aggregate([{
+        $match: { project: { $in: projects } }
+      }, {
+        $group: {
+
+          _id: { $dateTrunc: { date: "$monitoringDate", unit: "month" } },
+          actualCost: { $sum: "$actualCost" },
+        }
+      },
+      {
+        $sort: { "_id": 1 }
+      }]);
+
+      
+      
+      monthwiseActual.forEach(d => {
+        d._id.setHours(0);
+        let index = monthwiseIndex[d._id];
+        if (index > -1) monthwiseData[index].actual += d.actualCost;
+      });
+
+      
+      let totals = monthwiseData.reduce((total, current) => {
+        total.planned += current.planned || 0;
+        total.actual += current.actual || 0;
+        return total;
+      }, { planned: 0, actual: 0 })
+      
+
+      let currentMonthData = monthwiseData[monthwiseIndex[startOfMonth(new Date())]];
+
+      let budAtComp = totals.planned, actualCost = totals.actual;
+      let currentMonthActualCost = currentMonthData.actual ? currentMonthData.actual : 0;
+      let currentMonthPlannedCost = currentMonthData.planned ? currentMonthData.planned : 0;
+
+
+      let totalPlannedDays = portfolioSchedule[portfolioCycleId].portfolioPlannedDays;
+      let actualDaysSinceExecution = portfolioSchedule[portfolioCycleId].portfolioActualDays;
+
+      let averageMonthlyCost =  (budAtComp / totalPlannedDays)*currentMonthData.days;
+
+      let performanceData = {
+        PerformanceCostData: {
+          ActualCost: currentMonthActualCost,
+          AverageMonthlyCost: averageMonthlyCost,
+          PurpleRange: [0, averageMonthlyCost],
+          YellowRange: [averageMonthlyCost, averageMonthlyCost * 1.25],
+          RedRange: [averageMonthlyCost * 1.25, averageMonthlyCost * 1.5]
+        },
+        PerformanceBudgetData: {
+          TotalEstimatedBudget: budAtComp,
+          TotalActualCost: actualCost,
+          PurpleRange: [0, budAtComp],
+          YellowRange: [budAtComp, budAtComp + 0],
+          RedRange: [budAtComp + 0, (budAtComp + 0) * 1.25]
+        },
+        PerformanceScheduleData: {
+          TotalPlannedDays: totalPlannedDays,
+          TotalDaysSpent: actualDaysSinceExecution,
+          PurpleRange: [0, totalPlannedDays],
+          YellowRange: [totalPlannedDays, totalPlannedDays * 1.25],
+          RedRange: [totalPlannedDays * 1.25, totalPlannedDays * 1.75]
+        }
+      };
+
+      return res.json({ success: true, performanceData });
+    } catch (error) {
+      console.log(error)
+      respondWithError(res, error, 'Error when getting task.');
+    }
+  },
   kpiByProgramId: async function (req, res) {
     const DATETIME = dateFormat(new Date(), 'yyyy-mm-dd HH:MM:ss');
     try {
@@ -720,105 +842,87 @@ module.exports = {
         }
       }
 
-      let monthwisePlanned = await taskModel.aggregate([{
-        $match: { project: { $in: projects }, workPackage: true }
-      },
-      {
-        $group: {
-          _id: { $dateToString: { format: "%Y-%m", date: "$plannedEndDate" } },
-          firstDate: { $first: "$plannedEndDate" },
-          lastDate: { $last: "$plannedEndDate" },
-          plannedCost: { $sum: "$plannedCost" },
-          plannedCompletion: { $sum: "$weightage" },
-          actualCompletion: { $sum: { $divide: [{ $multiply: ["$weightage", "$completed"] }, 100] } },
+      let allWPTasks = await taskModel
+        .find({ project: { $in: projects }, workPackage: true })
+        .sort({ plannedStartDate: 1 })
+        .lean();
+
+
+      let datewiseBreakup = allWPTasks.length > 0 ? createKPIDates(new Date(programData.startDate), programData.endDate) : [];
+      let monthwiseData = createKPIMonthlyArray(new Date(programData.startDate), programData.endDate);
+      let monthwiseIndex = monthwiseData.reduce((m, c, i) => { m[c._id] = i; return m }, {});
+      allWPTasks.forEach(task => {
+        let i = 0;
+        task.plannedStartDate.setHours(0);
+        task.plannedEndDate.setHours(23, 59, 59);
+        while (datewiseBreakup[i] && datewiseBreakup[i].date <= task.plannedEndDate) {
+          if (datewiseBreakup[i].date >= task.plannedStartDate) {
+            if (isBusinessDay(datewiseBreakup[i].date)) {
+              datewiseBreakup[i].plannedCost += task.plannedCostPerDay;
+            }
+          }
+          i++;
         }
-      },
-      {
-        $sort: { "_id": 1 }
-      }]);
+      });
+
+      datewiseBreakup.forEach(d => {
+        let index = monthwiseIndex[startOfMonth(d.date)];
+        if (index > -1) {
+          monthwiseData[index].planned += d.plannedCost;
+          if (isBusinessDay(d.date)) monthwiseData[index].days += 1;
+        }
+      });
+
 
 
       let monthwiseActual = await monitoringModel.aggregate([{
         $match: { project: { $in: projects } }
       }, {
         $group: {
-          _id: { $dateToString: { format: "%Y-%m", date: "$monitoringDate" } },
+
+          _id: { $dateTrunc: { date: "$monitoringDate", unit: "month" } },
           actualCost: { $sum: "$actualCost" },
-          lastDate: { $last: "$monitoringDate" },
         }
       },
       {
         $sort: { "_id": 1 }
       }]);
-      let config = {
-        plannedCost: 0,
-        plannedCompletion: 0,
-        actualCompletion: 0,
-        actualCost: 0,
-        cumulativePlannedCost: 0,
-        cumulativePlannedCompletion: 0,
-        cumulativeActualCompletion: 0,
-        cumulativeActualCost: 0,
-        cumulativePlannedValue: 0,
-        cumulativeEarnedValue: 0
-      };
 
-      let monthList = createMonthlyArray(monthwisePlanned[0].firstDate, undefined, config)
-      let monthwiseData = _.values(_.merge(_.keyBy(monthList, '_id'), _.keyBy(monthwisePlanned, '_id'), _.keyBy(monthwiseActual, '_id')));
-      monthwiseData = monthwiseData.sort((a, b) => new Date(a._id) < new Date(b._id) ? -1 : 1)
-
-      // monthwiseData[monthwiseActual.length - 1].isLastMonitoring = true;
-      monthwiseData.forEach((doc, i, docs) => {
-        if (!doc.plannedCost) doc.plannedCost = 0;
-        if (!doc.plannedCompletion) doc.plannedCompletion = 0;
-        if (!doc.cumulativePlannedCost) doc.cumulativePlannedCost = 0;
-        if (!doc.actualCompletion) doc.actualCompletion = 0;
-        if (!doc.cumulativeActualCompletion) doc.cumulativeActualCompletion = 0;
-        let previous = docs[i - 1];
-        doc.cumulativePlannedCost = previous ? doc.plannedCost + previous.cumulativePlannedCost : doc.plannedCost;
-        doc.cumulativePlannedCompletion = previous ? doc.plannedCompletion + previous.cumulativePlannedCompletion : doc.plannedCompletion;
-        doc.cumulativeActualCompletion = previous ? doc.actualCompletion + previous.cumulativeActualCompletion : doc.actualCompletion;
-        doc.cumulativeActualCost = previous ? (doc.actualCost ? doc.actualCost : 0) + previous.cumulativeActualCost : doc.actualCost;
+      
+      
+      monthwiseActual.forEach(d => {
+        d._id.setHours(0);
+        let index = monthwiseIndex[d._id];
+        if (index > -1) monthwiseData[index].actual += d.actualCost;
       });
 
-      monthwiseData.forEach((doc, i, docs) => {
-        let previous = docs[i - 1], final = docs[docs.length - 1];
-        if (!doc.cumulativePlannedValue) doc.cumulativePlannedValue = 0;
-        if (!doc.cumulativeEarnedValue) doc.cumulativeEarnedValue = 0;
+      
+      let totals = monthwiseData.reduce((total, current) => {
+        total.planned += current.planned || 0;
+        total.actual += current.actual || 0;
+        return total;
+      }, { planned: 0, actual: 0 })
+      
 
-        doc.cumulativePlannedValue = previous ? previous.cumulativePlannedValue + (doc.plannedCompletion * final.cumulativePlannedCost) : doc.plannedCompletion * (final.cumulativePlannedCost ? final.cumulativePlannedCost : 0);
-        doc.cumulativeEarnedValue = previous ? previous.cumulativeEarnedValue + (doc.actualCompletion * final.cumulativePlannedCost) : doc.actualCompletion * (final.cumulativePlannedCost ? final.cumulativePlannedCost : 0);
-      });
+      let currentMonthData = monthwiseData[monthwiseIndex[startOfMonth(new Date())]];
 
-      let D = [], A = [monthwiseData[0].cumulativeActualCost], T = [0];
+      let budAtComp = totals.planned, actualCost = totals.actual;
+      let currentMonthActualCost = currentMonthData.actual ? currentMonthData.actual : 0;
+      let currentMonthPlannedCost = currentMonthData.planned ? currentMonthData.planned : 0;
 
-      monthwiseData.forEach((doc, i, docs) => {
-        D.push(doc.actualCost);
-        doc.FV = i > 0 ? docs[i - 1].FV + getFt(i, D, A, T) : 0;
-        // 
-      });
-
-      let currentMonthRow = monthwiseData.find(d => {
-        let y = startOfMonth(new Date(d._id)).valueOf() == startOfMonth(new Date()).valueOf()
-        return y;
-      });
-
-      let actualCost = currentMonthRow ? currentMonthRow.cumulativeActualCost : 0;
-      let currentMonthActualCost = currentMonthRow ? currentMonthRow.actualCost : 0;
-      let currentMonthPlannedCost = currentMonthRow ? currentMonthRow.plannedCost : 0;
-      let budAtComp = monthwiseData[monthwiseData.length - 1].cumulativePlannedCost;
 
       let totalPlannedDays = programSchedule[programId].programPlannedDays;
       let actualDaysSinceExecution = programSchedule[programId].programActualDays;
 
+      let averageMonthlyCost =  (budAtComp / totalPlannedDays)*currentMonthData.days;
 
       let performanceData = {
         PerformanceCostData: {
           ActualCost: currentMonthActualCost,
-          AverageMonthlyCost: currentMonthPlannedCost,
-          PurpleRange: [0, currentMonthPlannedCost],
-          YellowRange: [currentMonthPlannedCost, currentMonthPlannedCost * 1.25],
-          RedRange: [currentMonthPlannedCost * 1.25, currentMonthPlannedCost * 1.5]
+          AverageMonthlyCost: averageMonthlyCost,
+          PurpleRange: [0, averageMonthlyCost],
+          YellowRange: [averageMonthlyCost, averageMonthlyCost * 1.25],
+          RedRange: [averageMonthlyCost * 1.25, averageMonthlyCost * 1.5]
         },
         PerformanceBudgetData: {
           TotalEstimatedBudget: budAtComp,
@@ -2289,7 +2393,7 @@ module.exports = {
           }
         }
       ])).reduce(mapper, {});
-*/
+  */
       let schedule = (await programModel.aggregate([
         { $match: { _id: { $in: programs } } },
         { $group: { _id: { portfolio: "$portfolio", program: "$_id" }, startDate: { $min: "$startDate" }, endDate: { $max: "$endDate" } } },
@@ -2724,16 +2828,16 @@ module.exports = {
         $match: { portfolio: { $in: portfolios } },
       }, {
         $project: {
-          plannedDays: { $divide: [{ $subtract: ["$expectedEndDate", "$expectedStartDate"] }, 864e5] },
+          plannedDays: { $divide: [{ $subtract: ["$endDate", "$startDate"] }, 864e5] },
           actualDays: {
             $divide: [{
               $subtract: [{
                 $cond: {
                   if: { $eq: ["$completed", 100] }, then: "$lastMonitoringDate", else: {
-                    $cond: { if: { $lt: [new Date(), "$expectedStartDate"] }, then: "$expectedStartDate", else: new Date() }
+                    $cond: { if: { $lt: [new Date(), "$startDate"] }, then: "$startDate", else: new Date() }
                   }
                 }
-              }, "$expectedStartDate"]
+              }, "$startDate"]
             }, 864e5]
           },
 
@@ -3458,7 +3562,6 @@ module.exports = {
         obj[prop][row._id.toString()] = { projectActualDays: row.projectActualDays, projectPlannedDays: row.projectPlannedDays }
         return obj;
       }, {});
-
       let data = {
         allPrograms,
         programCostAndCompletion,
@@ -3697,6 +3800,7 @@ module.exports = {
       let scheduleStatus = 'On Schedule';
       if (scheduleVariance > 0) scheduleStatus = 'Ahead of schedule';
       else if (scheduleVariance < 0) scheduleStatus = 'Behind schedule';
+
       let costStatus = 'On budget';
       if (costVariance > 0) costStatus = 'Under budget';
       if (costVariance < 0) costStatus = 'Over budget';
@@ -3828,6 +3932,7 @@ module.exports = {
         EVMValuesPerMonth,
         EVMValuesPerMonth2,
       };
+      console.log(data)
       return res.json({ success: true, data: data });
     } catch (error) {
       console.log(error)
@@ -4522,8 +4627,10 @@ module.exports = {
     const DATETIME = dateFormat(new Date(), 'yyyy-mm-dd HH:MM:ss');
     try {
       let portfolioId = ObjectId(req.params.id);
-      let programs = await programModel.find({ portfolio: portfolioId }).lean();
-      let list = await programModel.find({ _id: { $in: programs } }, { _id: 1, name: 1 }).lean();
+      let programsData = await programModel.find({ portfolio: portfolioId }).lean();
+      let list = await programModel.find({ _id: { $in: programsData } }, { _id: 1, name: 1 }).lean();
+      let programs = programsData.map(d => d._id);
+
       let query = [{
         $lookup: { from: "projects", localField: "project", foreignField: "_id", as: "Project" },
       }, { "$unwind": { "path": "$Project", "preserveNullAndEmptyArrays": true } },
@@ -5151,8 +5258,7 @@ module.exports = {
 
       let datewiseBreakup = allWPTasks.length > 0 ? createDates(new Date(allWPTasks[0].plannedStartDate), lastPlannedDate) : [];
       allWPTasks.forEach(task => {
-        // let plannedStartDate = new Date(task.plannedStartDate.toLocaleDateString());
-        // let plannedEndDate = new Date(task.plannedEndDate.toLocaleDateString());
+
         let i = 0;
         while (datewiseBreakup[i] && datewiseBreakup[i].date <= task.plannedEndDate) {
           if (datewiseBreakup[i].date >= task.plannedStartDate) {
@@ -5166,8 +5272,8 @@ module.exports = {
       });
 
       datewiseBreakup.forEach((breakup, i) => {
-        datewiseBreakup[i].cumulativePlannedCost = (i == 0 ? 0 : datewiseBreakup[i - 1].cumulativePlannedCost) + breakup.plannedCost;
-        datewiseBreakup[i].cumulativePlannedCompletion = (i == 0 ? 0 : datewiseBreakup[i - 1].cumulativePlannedCompletion) + breakup.plannedCompletion;
+        datewiseBreakup[i].cumulativePlannedCost = (i == 0 ? breakup.plannedCost : datewiseBreakup[i - 1].cumulativePlannedCost) + breakup.plannedCost;
+        datewiseBreakup[i].cumulativePlannedCompletion = (i == 0 ? breakup.plannedCompletion : datewiseBreakup[i - 1].cumulativePlannedCompletion) + breakup.plannedCompletion;
       })
 
       let query = [
@@ -5208,22 +5314,34 @@ module.exports = {
 
 
 
-      let budAtComp;
+      let budAtComp = rootTask.plannedCost;
       let projectData = await projectModel.findById(req.params.id).exec();
+
+
       if (datewiseBreakup.length > 0) {
-        budAtComp = datewiseBreakup[datewiseBreakup.length - 1].cumulativePlannedCost;
+
 
         datewiseActualBreakup.forEach((breakup, i) => {
           datewiseActualBreakup[i].cumulativeEarnedValue = datewiseActualBreakup[i].cumulativeActualCompletion * budAtComp;
         })
 
 
-      } else {
-
-        budAtComp = projectData.totalEstimatedBudget;
       }
 
-     
+      // if (datewiseBreakup.length > 0) {
+      //   budAtComp = datewiseBreakup[datewiseBreakup.length - 1].cumulativePlannedCost;
+
+      //   datewiseActualBreakup.forEach((breakup, i) => {
+      //     datewiseActualBreakup[i].cumulativeEarnedValue = datewiseActualBreakup[i].cumulativeActualCompletion * budAtComp;
+      //   })
+
+
+      // } else {
+
+      //   budAtComp = projectData.totalEstimatedBudget;
+      // }
+
+
 
 
       let plannedValue = 0;
@@ -5238,53 +5356,39 @@ module.exports = {
         actualCost = datewiseActualBreakup.length ? datewiseActualBreakup[lastMonitoringIndex].cumulativeActualCost : 0;
       }
 
-
-      let currentMonthActualCost = 0, currentMonthPlannedCost = 0;
-
-
-      currentMonthPlannedCost = datewiseBreakup.reduce((monthPlannedCost, row) => {
-        if (row.date.getMonth() == (new Date()).getMonth() && row.date.getFullYear() == (new Date()).getFullYear()) return (monthPlannedCost + row.plannedCost);
-        else return monthPlannedCost;
-      }, 0)
-
-      currentMonthActualCost = datewiseActualBreakup.reduce((monthActualCost, row) => {
-        if (row.date.getMonth() == (new Date()).getMonth() && row.date.getFullYear() == (new Date()).getFullYear()) return (monthActualCost + row.actualCost);
-        else return monthActualCost;
-      }, 0)
-
-      let CPI = earnedValue ? earnedValue / actualCost : 0;
-      let SPI = earnedValue ? earnedValue / plannedValue : 0;
-
-
-
-
-      // let currentMonthRow = monthwiseData.find(d => {
-      //   let y = startOfMonth(new Date(d._id)).valueOf() == startOfMonth(new Date()).valueOf()
-      //   return y;
-      // });
-
-      // let actualCost = currentMonthRow ? currentMonthRow.cumulativeActualCost : 0;
-      // let currentMonthActualCost = currentMonthRow ? currentMonthRow.actualCost : 0;
-      // let currentMonthPlannedCost = currentMonthRow ? currentMonthRow.plannedCost : 0;
-      // let budAtComp = monthwiseData[monthwiseData.length - 1].cumulativePlannedCost;
-      // let averageMonthlyCost = budAtComp / monthwiseData.length;
-
-
-
-      let estimateAtCompletion = (SPI * CPI) != 0 ? actualCost + (budAtComp - earnedValue) / (SPI * CPI) : budAtComp;
-      let voc_actual = actualCost / budAtComp;
-      let voc_estimated = actualCost / estimateAtCompletion;
-      let acv = estimateAtCompletion / budAtComp;
-      let actualDaysSinceExecution = businessDays(
-        firstPlannedTask ? firstPlannedTask.plannedStartDate : new Date(),
-        completionDate || new Date()
-      );
       let totalPlannedDays;
       if (rootTask) {
         totalPlannedDays = businessDays(rootTask.plannedStartDate, rootTask.plannedEndDate);
       } else {
         totalPlannedDays = businessDays(projectData.expectedStartDate, projectData.expectedEndDate);
       }
+
+      let monthDays = businessDays(startOfMonth(new Date()), endOfMonth(new Date()))
+
+      // currentMonthPlannedCost = datewiseBreakup.reduce((monthPlannedCost, row) => {
+      //   if (row.date.getMonth() == (new Date()).getMonth() && row.date.getFullYear() == (new Date()).getFullYear()) return (monthPlannedCost + row.plannedCost);
+      //   else return monthPlannedCost;
+      // }, 0)
+
+      let = currentMonthActualCost = datewiseActualBreakup.reduce((monthActualCost, row) => {
+        if (row.date.getMonth() == (new Date()).getMonth() && row.date.getFullYear() == (new Date()).getFullYear()) return (monthActualCost + row.actualCost);
+        else return monthActualCost;
+      }, 0)
+      let currentMonthPlannedCost = (budAtComp / totalPlannedDays) * monthDays;
+      let CPI = earnedValue ? earnedValue / actualCost : 0;
+      let SPI = earnedValue ? earnedValue / plannedValue : 0;
+
+      let estimateAtCompletion = (SPI * CPI) != 0 ? actualCost + (budAtComp - earnedValue) / (SPI * CPI) : budAtComp;
+      let voc_actual = actualCost / budAtComp;
+      let voc_estimated = actualCost / estimateAtCompletion;
+      let acv = estimateAtCompletion / budAtComp;
+
+      let actualDaysSinceExecution = businessDays(
+        firstPlannedTask ? firstPlannedTask.plannedStartDate : new Date(),
+        completionDate || new Date()
+      );
+
+
 
       let performanceData = {
         PerformanceCostData: {
@@ -6066,33 +6170,33 @@ module.exports = {
 
       let actual = await taskUtilizedResourceModel.aggregate([
         { $match: { project } },
-        { $project: { date: { $dateToString: { date: "$monitoringDate", format: "%Y-%m-01" }},  total: {$multiply:["$actualCostPerUnit", "$quantity"]}, quantity: 1, isLabor: { $or: [{ $eq: ["$boqType", '1'] }, { $eq: ["$__type", "TaskUtilizedResource"] }] } } },
+        { $project: { date: { $dateToString: { date: "$monitoringDate", format: "%Y-%m-01" } }, total: { $multiply: ["$actualCostPerUnit", "$quantity"] }, quantity: 1, isLabor: { $or: [{ $eq: ["$boqType", '1'] }, { $eq: ["$__type", "TaskUtilizedResource"] }] } } },
         { $match: { isLabor: true } },
-        { $group: {_id: "$date", laborCost: {$sum: "$total"}, quantity: {$sum: "$quantity"} }}
+        { $group: { _id: "$date", laborCost: { $sum: "$total" }, quantity: { $sum: "$quantity" } } }
       ])
 
       let ar = [];
       let t = 0;
       planned.forEach(labor => {
         let costPerBusinessDay = labor.total / businessDays(labor.start, labor.end);
-        let start = labor.start, plannedDays= 0, plannedCost = 0;
+        let start = labor.start, plannedDays = 0, plannedCost = 0;
         let previousMonth = start.getMonth();
         while (start <= labor.end) {
           let currentMonth = start.getMonth();
           if (currentMonth != previousMonth) {
-            let date = start.getFullYear()+"-"+ (currentMonth<10?"0":"")+currentMonth+"-01";
+            let date = start.getFullYear() + "-" + (currentMonth < 10 ? "0" : "") + currentMonth + "-01";
             let index = ar.findIndex(d => d.date == date);
             if (index > -1) {
               ar[index].plannedCost += plannedCost;
-              ar[index].plannedDays+= plannedDays;
-            } else ar.push({ date, plannedCost, plannedDays,actualCost: 0,actualDays:0});
+              ar[index].plannedDays += plannedDays;
+            } else ar.push({ date, plannedCost, plannedDays, actualCost: 0, actualDays: 0 });
             plannedCost = 0;
-            plannedDays= 0;
+            plannedDays = 0;
           }
           if (isBusinessDay(start)) {
             t += costPerBusinessDay;
             plannedCost += costPerBusinessDay;
-            plannedDays+= 1;
+            plannedDays += 1;
           }
           previousMonth = currentMonth;
           start = addDays(start, 1);
@@ -6104,13 +6208,13 @@ module.exports = {
         if (index > -1) {
           ar[index].actualCost += a.laborCost;
           ar[index].actualDays += a.quantity;
-        } else ar.push({ date: a._id, plannedCost:0, plannedDays:0, actualCost: a.laborCost, actualDays: a.quantity });
-  
+        } else ar.push({ date: a._id, plannedCost: 0, plannedDays: 0, actualCost: a.laborCost, actualDays: a.quantity });
+
       })
 
       return res.json({ success: true, data: ar });
     } catch (error) {
-       respondWithError(res, error, 'Error when getting task.');
+      respondWithError(res, error, 'Error when getting task.');
     }
   },
 

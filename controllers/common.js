@@ -9,6 +9,16 @@ const createMonthlyArray = (start, end = add(new Date(), { months: 1 }),config) 
     }));
 };
 
+const createKPIMonthlyArray = (start, end = add(new Date(), { months: 1 }),config) => {
+    let monthsList = eachMonthOfInterval({ start, end });
+    return monthsList.map(month => ({
+        _id: month,
+        planned: 0,
+        actual: 0,
+        days: 0
+    }));
+};
+
 const createMonthlyDateArray = (start, end = add(new Date(), { months: 1 }),config) => {
     let monthsList = eachMonthOfInterval({ start, end });
     // return monthsList.map(month => ({
@@ -33,6 +43,19 @@ const createDates = (start, end) => {
         cumulativeActualCost: 0,
         cumulativePlannedValue: 0,
         cumulativeEarnedValue: 0
+    }));
+};
+
+
+const createKPIDates = (start, end) => {
+    let dates = eachDayOfInterval({ start, end });
+    return dates.map(date => ({
+        date: date,
+        plannedCost: 0,
+        actualCost: 0,
+        cumulativePlannedCost: 0,
+        cumulativeActualCost: 0,
+
     }));
 };
 
@@ -139,4 +162,4 @@ function respondWithNotFound(res, msg) {
 }
 
 
-module.exports = { isBusinessDay, createMonthlyDateArray,createDates, createMonthlyArray, respondWithError, nextCycle, getFt, businessDays };
+module.exports = { isBusinessDay, createKPIMonthlyArray,createMonthlyDateArray,createKPIDates,createDates, createMonthlyArray, respondWithError, nextCycle, getFt, businessDays };

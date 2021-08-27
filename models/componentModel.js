@@ -9,8 +9,8 @@ var componentSchema = new schema(
       default: null
     },
     name: { type: String,  required: true },
-    startDate: { type: Date, required: true },
-    endDate: { type: Date, required: true },
+    // startDate: { type: Date, required: true },
+    // endDate: { type: Date, required: true },
     locked: {type: Boolean, default: false},
     lockedOn: {type: Date},
     createdBy: {

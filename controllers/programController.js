@@ -91,7 +91,7 @@ module.exports = {
             error: err
           });
         }
-  
+
         if (!program) {
           const LOGMESSAGE = DATETIME + "|NO Such program of portfolio:" + id;
           log.write("ERROR", LOGMESSAGE);
@@ -104,7 +104,7 @@ module.exports = {
         log.write("INFO", LOGMESSAGE);
         return res.json({ success: true, data: program });
         // return res.json(program);
-      }).populate('manager',"username").populate('sponsor',"username").lean();
+      }).populate('manager', "username").populate('sponsor', "username").lean();
     } catch (error) {
       const LOGMESSAGE = DATETIME + "|" + error.message;
       log.write("ERROR", LOGMESSAGE);
@@ -137,22 +137,23 @@ module.exports = {
           });
         }
 
+        return res.json({ success: true, data: staticPrograms });
 
-        let programs = staticPrograms.map(d => ObjectId(d._id));
+        // let programs = staticPrograms.map(d => ObjectId(d._id));
 
-        let query = [{ $match: { taskId: "0" } }, { $lookup: { from: 'projects', localField: 'project', foreignField: '_id', as: 'Project' } }, { $unwind: { path: "$Project" } }, { $lookup: { from: 'programs', localField: 'Project.program', foreignField: '_id', as: 'Program' } }, { $unwind: { path: "$Program" } }, { $match: { 'Program._id': { $in: programs } } },
-        { $group: { _id: "$Program._id", plannedTotal: { $sum: "$plannedCost" }, actualTotal: { $sum: "$actualCost" } } }]
-        taskModel.aggregate(query, function (err, summary) {
-          let programsMap = summary.reduce((t, p) => {
-            t[p._id] = p;
-            return t;
-          }, {})
-          staticPrograms.forEach((d, i) => {
-            staticPrograms[i].plannedTotal = programsMap[d._id.toString()] ? programsMap[d._id.toString()].plannedTotal : 0;
-            staticPrograms[i].actualTotal = programsMap[d._id.toString()] ? programsMap[d._id.toString()].actualTotal : 0;
-          })
-          return res.json({ success: true, data: staticPrograms });
-        });
+        // let query = [{ $match: { taskId: "0" } }, { $lookup: { from: 'projects', localField: 'project', foreignField: '_id', as: 'Project' } }, { $unwind: { path: "$Project" } }, { $lookup: { from: 'programs', localField: 'Project.program', foreignField: '_id', as: 'Program' } }, { $unwind: { path: "$Program" } }, { $match: { 'Program._id': { $in: programs } } },
+        // { $group: { _id: "$Program._id", plannedTotal: { $sum: "$plannedCost" }, actualTotal: { $sum: "$actualCost" } } }]
+        // taskModel.aggregate(query, function (err, summary) {
+        //   let programsMap = summary.reduce((t, p) => {
+        //     t[p._id] = p;
+        //     return t;
+        //   }, {})
+        //   staticPrograms.forEach((d, i) => {
+        //     staticPrograms[i].plannedTotal = programsMap[d._id.toString()] ? programsMap[d._id.toString()].plannedTotal : 0;
+        //     staticPrograms[i].actualTotal = programsMap[d._id.toString()] ? programsMap[d._id.toString()].actualTotal : 0;
+        //   })
+        //   return res.json({ success: true, data: staticPrograms });
+        // });
       }).lean();
     } catch (error) {
 
@@ -168,7 +169,7 @@ module.exports = {
   available: function (req, res) {
     try {
       const DATETIME = dateFormat(new Date(), "yyyy-mm-dd HH:MM:ss");
-      var id = req.params.id;
+      var id = req.params.portfolioId;
       programModel.find({ portfolio: { $in: [ObjectId(id), null] } }, function (err, staticPrograms) {
         if (err) {
           return res.status(500).json({
@@ -177,28 +178,31 @@ module.exports = {
             error: err
           });
         }
+        console.log(staticPrograms)
         if (!staticPrograms) {
           return res.status(404).json({
             success: false,
             msg: "No such programs"
           });
         }
+        return res.json({ success: true, data: staticPrograms });
 
-        let programs = staticPrograms.map(d => ObjectId(d._id));
 
-        let query = [{ $match: { taskId: "0" } }, { $lookup: { from: 'projects', localField: 'project', foreignField: '_id', as: 'Project' } }, { $unwind: { path: "$Project" } }, { $lookup: { from: 'programs', localField: 'Project.program', foreignField: '_id', as: 'Program' } }, { $unwind: { path: "$Program" } }, { $match: { 'Program._id': { $in: programs } } },
-        { $group: { _id: "$Program._id", plannedTotal: { $sum: "$plannedCost" }, actualTotal: { $sum: "$actualCost" } } }]
-        taskModel.aggregate(query, function (err, summary) {
-          let programsMap = summary.reduce((t, p) => {
-            t[p._id] = p;
-            return t;
-          }, {})
-          staticPrograms.forEach((d, i) => {
-            staticPrograms[i].plannedTotal = programsMap[d._id.toString()] ? programsMap[d._id.toString()].plannedTotal : 0;
-            staticPrograms[i].actualTotal = programsMap[d._id.toString()] ? programsMap[d._id.toString()].actualTotal : 0;
-          })
-          return res.json({ success: true, data: staticPrograms });
-        });
+        // let programs = staticPrograms.map(d => ObjectId(d._id));
+
+        // let query = [{ $match: { taskId: "0" } }, { $lookup: { from: 'projects', localField: 'project', foreignField: '_id', as: 'Project' } }, { $unwind: { path: "$Project" } }, { $lookup: { from: 'programs', localField: 'Project.program', foreignField: '_id', as: 'Program' } }, { $unwind: { path: "$Program" } }, { $match: { 'Program._id': { $in: programs } } },
+        // { $group: { _id: "$Program._id", plannedTotal: { $sum: "$plannedCost" }, actualTotal: { $sum: "$actualCost" } } }]
+        // taskModel.aggregate(query, function (err, summary) {
+        //   let programsMap = summary.reduce((t, p) => {
+        //     t[p._id] = p;
+        //     return t;
+        //   }, {})
+        //   staticPrograms.forEach((d, i) => {
+        //     staticPrograms[i].plannedTotal = programsMap[d._id.toString()] ? programsMap[d._id.toString()].plannedTotal : 0;
+        //     staticPrograms[i].actualTotal = programsMap[d._id.toString()] ? programsMap[d._id.toString()].actualTotal : 0;
+        //   })
+        //   return res.json({ success: true, data: staticPrograms });
+        // });
       }).lean();
     } catch (error) {
       return res.status(500).json({
@@ -341,7 +345,8 @@ module.exports = {
         sponsor: req.body.sponsor,
         createdBy: req.body.createdBy,
         createdDate: req.body.createdDate,
-        budgetRequired: req.body.budgetRequired
+        budgetRequired: req.body.budgetRequired,
+        totalEstimatedBudget: req.body.totalEstimatedBudget
       });
 
       program.save(function (err, program) {
@@ -375,7 +380,7 @@ module.exports = {
 
   },
   linkedProjects: function (req, res) {
-    projectModel.find({ program:  ObjectId(req.params.programId) }, function (err, projects) {
+    projectModel.find({ program: ObjectId(req.params.programId) }, function (err, projects) {
       return res.json({ success: true, data: projects });
     }).lean();
 
@@ -402,11 +407,7 @@ module.exports = {
       return res.json({ success: true, data: projects });
     }).lean();
 
-    // let query = [{ $match: { taskId: "0", "plannedStartDate": { $gte: new Date(req.params.startDate) }, "plannedEndDate": { $lte: new Date(req.params.endDate) } } }, { $lookup: { from: 'projects', localField: 'project', foreignField: '_id', as: 'Project' } }, { $unwind: { path: "$Project" } }, { $match: { 'Project.program': null } },
-    // { $group: { _id: { _id: "$Project._id", name: "$Project.name", startDate: "$Project.expectedStartDate", endDate: "$Project.expectedEndDate" }, plannedTotal: { $sum: "$plannedCost" }, actualTotal: { $sum: "$actualCost" } } }];
-    // taskModel.aggregate(query, function (err, summary) {
-    //   return res.json({ success: true, data: summary });
-    // });
+   
   },
   update: function (req, res) {
     try {
@@ -432,16 +433,16 @@ module.exports = {
         }
 
 
-        program.program = req.body.program ? req.body.program : program.program,
-          program.name = req.body.name ? req.body.name : program.name,
-          program.startDate = req.body.startDate ? req.body.startDate : program.startDate,
-          program.endDate = req.body.endDate ? req.body.endDate : program.endDate,
-          program.status = req.body.status ? req.body.status : program.status,
-          program.manager = req.body.manager ? req.body.manager : program.manager,
-          program.sponsor = req.body.sponsor ? req.body.sponsor : program.sponsor,
+        program.program = req.body.program ? req.body.program : program.program;
+        program.name = req.body.name ? req.body.name : program.name;
+        program.startDate = req.body.startDate ? req.body.startDate : program.startDate;
+        program.endDate = req.body.endDate ? req.body.endDate : program.endDate;
+        program.status = req.body.status ? req.body.status : program.status;
+        program.manager = req.body.manager ? req.body.manager : program.manager;
+        program.sponsor = req.body.sponsor ? req.body.sponsor : program.sponsor;
+        program.totalEstimatedBudget = req.body.totalEstimatedBudget ? req.body.totalEstimatedBudget : program.totalEstimatedBudget;
 
-
-          program.createdBy = req.body.createdBy ? req.body.createdBy : program.createdBy
+        program.createdBy = req.body.createdBy ? req.body.createdBy : program.createdBy;
 
 
 

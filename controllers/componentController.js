@@ -247,8 +247,8 @@ module.exports = {
   create: function (req, res) {
     const DATETIME = dateFormat(new Date(), "yyyy-mm-dd HH:MM:ss");
     try {
-      let { component, projects } = req.body;
-      componentModel.insertMany(component, function (err, components) {
+      let component  = req.body;
+      componentModel.create(component, function (err, newComponent) {
         if (err) {
           const LOGMESSAGE = DATETIME + "|" + err.message;
           log.write("ERROR", LOGMESSAGE);
@@ -258,26 +258,28 @@ module.exports = {
             error: err
           });
         }
-
-        projects.forEach((d, i) => {
-          projects[i].component = components[0]._id;
-          projects[i].program = components[0].program;
-          projects[i].createdBy = components[0].createdBy;
-        })
-        projectModel.insertMany(projects, function (err, projects) {
-          if (err) {
-            const LOGMESSAGE = DATETIME + "|" + err.message;
-            log.write("ERROR", LOGMESSAGE);
-            return res.status(500).json({
-              success: false,
-              msg: "Error when creating projects",
-              error: err
-            });
-          }
-          const LOGMESSAGE = DATETIME + "|projects created";
+        const LOGMESSAGE = DATETIME + "|projects created";
           log.write("INFO", LOGMESSAGE);
-          return res.json({ success: true, msg: "component & projects created", data: projects });
-        });
+          return res.json({ success: true, msg: "component created", data: newComponent });
+        // projects.forEach((d, i) => {
+        //   projects[i].component = components[0]._id;
+        //   projects[i].program = components[0].program;
+        //   projects[i].createdBy = components[0].createdBy;
+        // })
+        // projectModel.insertMany(projects, function (err, projects) {
+        //   if (err) {
+        //     const LOGMESSAGE = DATETIME + "|" + err.message;
+        //     log.write("ERROR", LOGMESSAGE);
+        //     return res.status(500).json({
+        //       success: false,
+        //       msg: "Error when creating projects",
+        //       error: err
+        //     });
+        //   }
+        //   const LOGMESSAGE = DATETIME + "|projects created";
+        //   log.write("INFO", LOGMESSAGE);
+        //   return res.json({ success: true, msg: "component & projects created", data: projects });
+        // });
       });
     } catch (error) {
       const LOGMESSAGE = DATETIME + "|" + error.message;

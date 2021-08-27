@@ -5,7 +5,7 @@ const portfolioCycleSchema = new Schema({
         type: Schema.Types.ObjectId,
         ref: "Portfolio"
     },
-    budget: {
+    totalEstimatedBudget: {
         type: Number
     },
     status: { 

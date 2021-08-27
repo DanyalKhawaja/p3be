@@ -16,7 +16,8 @@ var programSchema = new schema(
         //     type: String,
         //     ref: "Currency",
         // },
-        budgetRequired: { type: String, required: true },
+        budgetRequired: { type: Number, default: 0},
+        totalEstimatedBudget: {type: Number, default: 0},
         manager: {
             type: mongoose.Schema.ObjectId,
             ref: 'User',

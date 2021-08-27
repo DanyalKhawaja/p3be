@@ -13,7 +13,7 @@ router.get("/notlinked", programController.notLinked);
 router.get("/staticprojects/:startDate/:endDate", programController.staticProjects);
 router.get("/linkedProjects/:programId", programController.linkedProjects);
 router.get("/checkedprojects/:programId/:startDate/:endDate", programController.checkedProjects);
-router.get("/available/:id", programController.available);
+router.get("/available/:portfolioId", programController.available);
 // router.get("/locked", programController.lockedList);
 // router.get("/open", programController.openList);
 /*

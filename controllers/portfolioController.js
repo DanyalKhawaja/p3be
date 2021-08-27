@@ -118,10 +118,10 @@ module.exports = {
         _id: req.body._id,
         name: req.body.name,
         description: req.body.description,
+        manager: req.body.createdBy,
         createdBy: req.body.createdBy,
         createDate: req.body.createDate,
-        updateDate: req.body.updateDate,
-        updatedBy: req.body.updatedBy
+        totalEstimatedBudget: req.body.totalEstimatedBudget
       });
 
       portfolio.save(function (err, portfolio) {
@@ -176,7 +176,7 @@ module.exports = {
 
         portfolio.name = req.body.name ? req.body.name : portfolio.name;
         portfolio.description = req.body.description ? req.body.description : portfolio.description;
-   
+        portfolio.totalEstimatedBudget = req.body.totalEstimatedBudget ? req.body.totalEstimatedBudget : portfolio.totalEstimatedBudget;
         portfolio.updatedBy = req.body.updatedBy ? req.body.updatedBy : portfolio.updatedBy;
 
         portfolio.save(function (err, portfolio) {
