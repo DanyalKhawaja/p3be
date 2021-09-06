@@ -73,7 +73,7 @@ module.exports = {
     try {
       const DATETIME = dateFormat(new Date(), "yyyy-mm-dd HH:MM:ss");
       var id = req.params.projectId;
-      projectLocationModel.find({ project: id , pathType: {$in:['End','single']}}).exec(function (err, projectLocation) {
+      projectLocationModel.find({ project: id , pathType: {$in:['Start','single','multi']}}).exec(function (err, projectLocation) {
         if (err) {
           const LOGMESSAGE = DATETIME + "|" + err.message;
           log.write("ERROR", LOGMESSAGE);
@@ -213,7 +213,7 @@ module.exports = {
     try {
       const DATETIME = dateFormat(new Date(), "yyyy-mm-dd HH:MM:ss");
       var id = req.params.id;
-      projectLocationModel.findByIdAndRemove(id, function (err, projectLocation) {
+      projectLocationModel.deleteMany({project: id}, function (err, projectLocation) {
         if (err) {
           const LOGMESSAGE = DATETIME + "|" + err.message;
           log.write("ERROR", LOGMESSAGE);
@@ -223,7 +223,7 @@ module.exports = {
             error: err
           });
         }
-        if (!project) {
+        if (!projectLocation) {
           const LOGMESSAGE = DATETIME + "|project locationnot found to delete|" +projectLocation;
           log.write("ERROR", LOGMESSAGE);
           return res.status(404).json({

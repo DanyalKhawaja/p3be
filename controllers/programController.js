@@ -396,7 +396,7 @@ module.exports = {
 
       return res.json({ success: true, data: projects });
 
-    }).lean();
+    }).populate('component','name').lean();
 
   },
   staticProjects: function (req, res) {
@@ -405,7 +405,7 @@ module.exports = {
     projectModel.find({ expectedStartDate: { $gte: new Date(req.params.startDate) }, expectedEndDate: { $lte: new Date(req.params.endDate) }, program: [null, ObjectId(req.params.programId)] }, function (err, projects) {
       console.log(projects)
       return res.json({ success: true, data: projects });
-    }).lean();
+    }).populate('component','name').lean();
 
    
   },

@@ -35,6 +35,7 @@ var projectSchema = new schema({
     currency: {
         type: String,
         ref: "Currency",
+        default: "usd"
     },
     totalEstimatedBudget: {type: Number, default: 0},
     managementReserve: {type: Number, default: 0},
