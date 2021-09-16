@@ -628,7 +628,7 @@ module.exports = {
         doc.cumulativeActualCompletion = previous ? doc.actualCompletion + previous.cumulativeActualCompletion : doc.actualCompletion;
         doc.cumulativeActualCost = previous ? (doc.actualCost ? doc.actualCost : 0) + previous.cumulativeActualCost : doc.actualCost;
       });
-      // console.log(monthwiseData)
+
       monthwiseData.forEach((doc, i, docs) => {
         let previous = docs[i - 1], final = docs[docs.length - 1];
         if (!doc.cumulativePlannedValue) doc.cumulativePlannedValue = 0;
@@ -3680,7 +3680,6 @@ module.exports = {
         completionDate = drows.length > 0 ? drows[0].actualEndDate : null;
       }
 
-
       let tasks = allWPTasks;
       let prev = null;
 
@@ -3688,11 +3687,12 @@ module.exports = {
 
 
       allWPTasks.forEach(task => {
-        // let plannedStartDate = new Date(task.plannedStartDate);
-        // let plannedEndDate = new Date(task.plannedEndDate);
+
         let i = 0;
-        while (datewiseBreakup[i] && datewiseBreakup[i].date <= task.plannedEndDate) {
-          if (datewiseBreakup[i].date >= task.plannedStartDate) {
+        let ped = (new Date(task.plannedEndDate)).setHours(0);
+        let psd = (new Date(task.plannedStartDate)).setHours(0);
+        while (datewiseBreakup[i] && datewiseBreakup[i].date.valueOf() <= ped.valueOf()) {
+          if (datewiseBreakup[i].date.valueOf() >= psd.valueOf()) {
             if (isBusinessDay(datewiseBreakup[i].date)) {
               datewiseBreakup[i].plannedCost += task.plannedCostPerDay;
               datewiseBreakup[i].plannedCompletion += weightageMap[task.taskId] / task.days;
@@ -3805,7 +3805,7 @@ module.exports = {
       if (costVariance > 0) costStatus = 'Under budget';
       if (costVariance < 0) costStatus = 'Over budget';
       let CPI = actualCost ? earnedValue / actualCost : 0;
-      let SPI = earnedValue / plannedValue;
+      let SPI = plannedValue > 0 ?earnedValue / plannedValue:0;
       let estimateAtCompletion = actualCost ? (actualCost + (budAtComp - earnedValue) / (SPI * CPI)) : budAtComp;
       let varianceAtCompletion = budAtComp - estimateAtCompletion;
       let voc_actual = actualCost / budAtComp;
@@ -3932,7 +3932,7 @@ module.exports = {
         EVMValuesPerMonth,
         EVMValuesPerMonth2,
       };
-      console.log(data)
+
       return res.json({ success: true, data: data });
     } catch (error) {
       console.log(error)
@@ -4086,7 +4086,7 @@ module.exports = {
         plannedValue = plannedIndex > -1 ? datewiseBreakup[plannedIndex].cumulativePlannedCost : datewiseBreakup[datewiseBreakup.length - 1].cumulativePlannedCost;
         earnedValue = lastMonitoringIndex > -1 ? datewiseActualBreakup[lastMonitoringIndex].cumulativeEarnedValue : 0;
         actualCost = lastMonitoringIndex > -1 ? datewiseActualBreakup[lastMonitoringIndex].cumulativeActualCost : 0;
-        console.log()
+
       }
 
 
@@ -6533,7 +6533,7 @@ module.exports = {
 
 
       }
-      console.log()
+
       let D = [_.get(monActBrk, `mon.${firstD}.cumActCost`, 0)];
       let A = [D[0]],
         T = [0];
