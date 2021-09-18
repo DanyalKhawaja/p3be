@@ -715,7 +715,7 @@ module.exports = {
       let cycleStart = new Date(portfolioCycleData.startDate)
       cycleStart.setHours(0);
       let cycleEnd = new Date(portfolioCycleData.endDate)
-      cycleEnd.setHours(23,59,59);
+      cycleEnd.setHours(23, 59, 59);
       let portfolioSchedule = {
         [portfolioCycleId]: {
           portfolioActualDays: businessDays(cycleStart, new Date()),
@@ -724,7 +724,7 @@ module.exports = {
       }
 
       let allWPTasks = await taskModel
-        .find({ project: { $in: projects }, workPackage: true})
+        .find({ project: { $in: projects }, workPackage: true })
         .sort({ plannedStartDate: 1 })
         .lean();
 
@@ -736,7 +736,7 @@ module.exports = {
         let i = 0;
         task.plannedStartDate.setHours(0);
         task.plannedEndDate.setHours(23, 59, 59);
-        while (datewiseBreakup[i] && datewiseBreakup[i].date <= task.plannedEndDate &&  task.plannedStartDate >= cycleStart &&  task.plannedEndDate <= cycleEnd) {
+        while (datewiseBreakup[i] && datewiseBreakup[i].date <= task.plannedEndDate && task.plannedStartDate >= cycleStart && task.plannedEndDate <= cycleEnd) {
           if (datewiseBreakup[i].date >= task.plannedStartDate) {
             if (isBusinessDay(datewiseBreakup[i].date)) {
               datewiseBreakup[i].plannedCost += task.plannedCostPerDay;
@@ -769,21 +769,21 @@ module.exports = {
         $sort: { "_id": 1 }
       }]);
 
-      
-      
+
+
       monthwiseActual.forEach(d => {
         d._id.setHours(0);
         let index = monthwiseIndex[d._id];
         if (index > -1) monthwiseData[index].actual += d.actualCost;
       });
 
-      
+
       let totals = monthwiseData.reduce((total, current) => {
         total.planned += current.planned || 0;
         total.actual += current.actual || 0;
         return total;
       }, { planned: 0, actual: 0 })
-      
+
 
       let currentMonthData = monthwiseData[monthwiseIndex[startOfMonth(new Date())]];
 
@@ -795,7 +795,7 @@ module.exports = {
       let totalPlannedDays = portfolioSchedule[portfolioCycleId].portfolioPlannedDays;
       let actualDaysSinceExecution = portfolioSchedule[portfolioCycleId].portfolioActualDays;
 
-      let averageMonthlyCost =  (budAtComp / totalPlannedDays)*currentMonthData.days;
+      let averageMonthlyCost = (budAtComp / totalPlannedDays) * currentMonthData.days;
 
       let performanceData = {
         PerformanceCostData: {
@@ -888,21 +888,21 @@ module.exports = {
         $sort: { "_id": 1 }
       }]);
 
-      
-      
+
+
       monthwiseActual.forEach(d => {
         d._id.setHours(0);
         let index = monthwiseIndex[d._id];
         if (index > -1) monthwiseData[index].actual += d.actualCost;
       });
 
-      
+
       let totals = monthwiseData.reduce((total, current) => {
         total.planned += current.planned || 0;
         total.actual += current.actual || 0;
         return total;
       }, { planned: 0, actual: 0 })
-      
+
 
       let currentMonthData = monthwiseData[monthwiseIndex[startOfMonth(new Date())]];
 
@@ -914,7 +914,7 @@ module.exports = {
       let totalPlannedDays = programSchedule[programId].programPlannedDays;
       let actualDaysSinceExecution = programSchedule[programId].programActualDays;
 
-      let averageMonthlyCost =  (budAtComp / totalPlannedDays)*currentMonthData.days;
+      let averageMonthlyCost = (budAtComp / totalPlannedDays) * currentMonthData.days;
 
       let performanceData = {
         PerformanceCostData: {
@@ -3805,7 +3805,7 @@ module.exports = {
       if (costVariance > 0) costStatus = 'Under budget';
       if (costVariance < 0) costStatus = 'Over budget';
       let CPI = actualCost ? earnedValue / actualCost : 0;
-      let SPI = plannedValue > 0 ?earnedValue / plannedValue:0;
+      let SPI = plannedValue > 0 ? earnedValue / plannedValue : 0;
       let estimateAtCompletion = actualCost ? (actualCost + (budAtComp - earnedValue) / (SPI * CPI)) : budAtComp;
       let varianceAtCompletion = budAtComp - estimateAtCompletion;
       let voc_actual = actualCost / budAtComp;
@@ -6109,10 +6109,14 @@ module.exports = {
           }
         },
         {
+
+
           $group: {
             _id: { task: '$task', boq: "$boq" },
             total: { $sum: '$total' },
-            qty: { $sum: '$quantity' }
+            qty: { $sum: '$quantity' },
+            actualTotal: { $sum: '$costIncurred' },
+            actualQty: { $sum: '$quantityConsumed' },
           }
         },
         {
@@ -6125,17 +6129,79 @@ module.exports = {
         },
       ];
 
-      let consumableMaterialBreakup = (await taskPlannedResourceModel.aggregate(query)).reduce((obj, row) => {
+      let consumableMaterialBreakup = (await taskPlannedResourceModel.aggregate(query))
+      .reduce((obj, row) => {
         if (!obj[row._id.task]) obj[row._id.task] = [];
         obj[row._id.task].push({
           material: row.material[0].name,
           Planned: {
             qty: row.qty,
             total: row.total
-          }
+          },
+          Actual: {
+            qty: row.actualQty,
+            total: row.actualTotal
+          },
+          
         });
         return obj;
       }, {});
+      query = [
+        {
+          $match: {
+            $and: [{ project }, { boqType: '4' }]
+          }
+        },
+        {
+          $group: {
+            _id: { task: '$task', boq: "$boq"  },
+            total: { $sum: { $multiply: ['$actualCostPerUnit', '$quantity'] } },
+            qty: { $sum: '$quantity' }
+          }
+        },
+        {
+          $lookup: {
+            from: "boqs",
+            localField: "_id.boq",
+            foreignField: "_id",
+            as: "material"
+          }
+        },
+      ];
+      // let actualConsumableMaterialBreakup = (await taskUtilizedResourceModel.aggregate(query))
+      // .reduce((obj, row) => {
+      //   let f =plannedConsumableMaterialBreakup;
+      //   if (!obj[row._id.task]) obj[row._id.task] = {};
+      //   obj[row._id.task] = { qty: row.qty, total: row.total };
+      //   return obj;
+      // }, {});
+
+
+
+
+      
+      // query = [
+      //   {
+      //     $match: {
+      //       $and: [{ project }, { boqType: '1' }]
+      //     }
+      //   },
+      //   {
+      //     $group: {
+      //       _id: { task: '$task' },
+      //       total: { $sum: { $multiply: ['$actualCostPerUnit', '$quantity'] } },
+      //       qty: { $sum: '$quantity' }
+      //     }
+      //   }
+     
+        
+      // ];
+
+      // let actualLaborBreakup = (await taskUtilizedResourceModel.aggregate(query)).reduce((obj, row) => {
+      //   if (!obj[row._id.task]) obj[row._id.task] = {};
+      //   obj[row._id.task] = { qty: row.qty, total: row.total };
+      //   return obj;
+      // }, {});
 
       let data = {
         tasks,
@@ -6147,6 +6213,7 @@ module.exports = {
         actualContractorEquipmentBreakup,
         plannedContractorEquipmentBreakup,
         consumableMaterialBreakup,
+      //  plannedConsumableMaterialBreakup
       };
       return res.json({ success: true, data: data });
     } catch (error) {
