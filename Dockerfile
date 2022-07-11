@@ -1,7 +1,7 @@
 FROM node:carbon
-WORKDIR /node-api-prod
+WORKDIR /node-api-demo
 COPY package*.json ./
 RUN npm install --only=production
 COPY . .
 CMD ["npm", "start"]
-EXPOSE  8881 443
+EXPOSE  8882 444
