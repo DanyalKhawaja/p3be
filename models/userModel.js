@@ -22,24 +22,19 @@ const userSchema = new schema({
       required: true
    },
    designation: {
-      type: String,
-      required: true
+      type: String
    },
    firstName: {
-      type: String,
-      required: true
+      type: String
    },
    lastName: {
-      type: String,
-      required: true
+      type: String
    },
    middleName: {
-      type: String,
-      required: true
+      type: String
    },
    phoneNo: {
-      type: String,
-      required: true
+      type: String
    },
    companyId: {
       type: mongoose.Schema.ObjectId,
@@ -60,8 +55,7 @@ const userSchema = new schema({
       ref: "User"
    }, //required true
    employmentType: {
-      type: String,
-      required: true
+      type: String
    },
    createdBy: {
       type: mongoose.Schema.ObjectId,
@@ -72,8 +66,7 @@ const userSchema = new schema({
       ref: "User"
    },
    joiningDate: {
-      type: Date,
-      required: true
+      type: Date
    },
    createdDate: {
       type: Date,
@@ -87,8 +80,7 @@ const userSchema = new schema({
       default: false
    },
    status: {
-      type: String,
-      required: true
+      type: String
    },
    deleted: {
       type: Boolean,

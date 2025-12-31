@@ -4,11 +4,12 @@ const cookieParser = require("cookie-parser");
 const logger = require("morgan");
 const mongoose = require("mongoose");
 const morgan = require("morgan");
+const session = require('express-session');
 const passport = require('passport');
 
 const cors = require('cors');
 
-const databaseConfig = require("./config/database");
+const databaseConfig = require("./config/_database");
 const indexRouter = require("./routes/index");
 const userRoutes = require("./routes/userRoutes");
 const departmentRoutes = require("./routes/departmentRoutes");
@@ -57,15 +58,13 @@ const pptCVsCRoutes = require('./routes/pptCVsCRoutes');
 const companyRoutes = require('./routes/companyRoutes')
 const subscriptionRoutes = require('./routes/subscriptionRoutes');
 const componentRoutes = require('./routes/componentRoutes');
-mongoose
-  .connect(databaseConfig.uri, {
-    useNewUrlParser: true,
-    useUnifiedTopology: true,
-    useCreateIndex: true,
-    useFindAndModify: false
-  })
-  .then(() => console.log("DB server connect"))
-  .catch(e => console.log("DB error", e));
+
+const clientOptions = { useNewUrlParser: true } ;
+(async () => {
+  await mongoose.connect(databaseConfig.uri, clientOptions);
+  await mongoose.connection.db.admin().command({ ping: 1 });
+}
+)();
 
 const app = express();
 
@@ -73,6 +72,12 @@ app.use(cors());
 app.use(logger("dev"));
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: false }));
+app.use(session({
+  secret: 'your_secret_key',
+  resave: false,
+  saveUninitialized: false,
+  cookie: { secure: false } // true if HTTPS
+}));
 app.use(cookieParser());
 app.use(express.static(path.join(__dirname, "public")));
 
@@ -84,11 +89,11 @@ require('./lib/passport');
 
 app.use("/", indexRouter);
 app.use("/", authRoutes);
-app.use("/user", passport.authenticate('jwt', { session: false }), userRoutes);
+app.use("/user",  userRoutes);
 app.use("/department", passport.authenticate('jwt', { session: false }), departmentRoutes);
-app.use("/company", passport.authenticate('jwt', { session: false }), companyRoutes);
-app.use("/subscription", passport.authenticate('jwt', { session: false }), subscriptionRoutes);
-app.use('/role', passport.authenticate('jwt', { session: false }), roleRoutes);
+app.use("/company", companyRoutes);
+app.use("/subscription",  subscriptionRoutes);
+app.use('/role',  roleRoutes);
 app.use('/currency', passport.authenticate('jwt', { session: false }), currencyRoutes);
 app.use("/projecttype", passport.authenticate('jwt', { session: false }), projectTypeRoutes);
 

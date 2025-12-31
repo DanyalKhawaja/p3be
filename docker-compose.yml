@@ -1,29 +1,29 @@
-version: '2'
 services:
   app:
-    container_name: node-api-demo-container_
-    image: node-api-demo
+    container_name: p3-api-container
+    image: p3-api
     restart: always
     build: .
     volumes:
-      - "/_/node-api-demo/LOGS:/node-api-demo/LOGS"
-      - "/_/node-api-demo/routes:/node-api-demo/routes"
-      - "/_/node-api-demo/config:/node-api-demo/config"
-      - "/_/node-api-demo/controllers:/node-api-demo/controllers"
-      - "/_/node-api-demo/models:/node-api-demo/models"
-      - "/_/node-api-demo/validators:/node-api-demo/validators"
-      - "/_/node-api-demo/app.js:/node-api-demo/app.js"
+      - "/P3Backend/LOGS:/P3Backend/LOGS"
+      - "/P3Backend/routes:/P3Backend/routes"
+      - "/P3Backend/config:/P3Backend/config"
+      - "/P3Backend/controllers:/P3Backend/controllers"
+      - "/P3Backend/models:/P3Backend/models"
+      - "/P3Backend/validators:/P3Backend/validators"
+      - "/P3Backend/app.js:/P3Backend/app.js"
       - "/etc/localtime:/etc/localtime:ro"
 
     ports:
-      - "9000:8000"
-    links:
+      - "8000:8000"
+    depends_on:
       - mongo
+
   mongo:
-    container_name: mongo-node-api-demo
-    image: mongo:5.0.1
+    container_name: p3-db-container
+    image: mongo
     restart: always
     volumes:
-    - "/_/node-api-demo/db:/data/db"
+      - ../db:/data/db
     ports:
       - "27027:27017"

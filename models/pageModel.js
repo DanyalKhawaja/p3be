@@ -5,7 +5,7 @@ var pageSchema = new Schema({
     type: String, required: true
   },
   route: {
-    type: String, required: true
+    type: String
   },
   path: {
     type: String, required: true
@@ -13,8 +13,16 @@ var pageSchema = new Schema({
   order: {
     type: Number
   },
+  roles: {
+    type: [],
+    required: true,
+    ref: "Role"
+  },
   disabled: {
     type: Boolean
+  },
+  icon: {
+    type: String
   }
 });
 

@@ -1,7 +1,7 @@
-FROM node:carbon
-WORKDIR /node-api-demo
+FROM node:18-alpine
+WORKDIR /src/app
 COPY package*.json ./
 RUN npm install --only=production
 COPY . .
-CMD ["npm", "start"]
 EXPOSE  8882 444
+CMD ["npm", "start"]

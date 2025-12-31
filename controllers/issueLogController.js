@@ -1,8 +1,8 @@
 const dateFormat = require("dateformat");
-const Promise = require("bluebird");
+// const Promise = require("bluebird");
 
 const issueLogModel = require("../models/issueLogModel");
-const issueUpdateModel = require("../models/issueUpdateModel");
+// const issueUpdateModel = require("../models/issueUpdateModel");
 const log = require("../lib/logger");
 
 //uncomment below 2 lines for options 1 in latestListByProjectId

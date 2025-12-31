@@ -8,8 +8,7 @@ const subscriptionSchema = new schema({
       required: true
    },
    validity: {
-      type: Date, 
-      required: true
+      type: Date
    },
    type: {
       type: String,   
