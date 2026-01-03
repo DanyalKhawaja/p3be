@@ -547,7 +547,7 @@ const seedDatabase = async () => {
 
         const users = [
             {
-                email: "danyal_saleem@hotmail.com",
+                email: "farhan@gmail.com",
                 username: "farhan",
                 password: "123",
                 companyId: createdCompanies[0]._id,

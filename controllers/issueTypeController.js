@@ -4,6 +4,7 @@ const issueTypeModel = require("../models/issueTypeModel");
 const issueInitiationLogModel = require("../models/issueInitiationLogModel");
 const log = require('../lib/logger');
 
+
 module.exports = {
   list: function (req, res) {
     try {
@@ -123,86 +124,59 @@ module.exports = {
       });
     }
   },
-
   update: function (req, res) {
     try {
       const DATETIME = dateFormat(new Date(), "yyyy-mm-dd HH:MM:ss");
       var id = req.params.id;
-      issueTypeModel.findByIdAndRemove(id, function (err, issueType) {
+      issueTypeModel.findOne({ _id: id }, function (err, issueType) {
         if (err) {
           const LOGMESSAGE = DATETIME + "|" + err.message;
           log.write("ERROR", LOGMESSAGE);
           return res.status(500).json({
             success:false,
-            msg: "Error when deleting the issue Type.",
+            msg: "Error when getting Issue Type",
             error: err
           });
         }
         if (!issueType) {
-          const LOGMESSAGE = DATETIME + "|issueType not found to delete|" +issueType;
+          const LOGMESSAGE = DATETIME + "|No such Issue Type to update";
           log.write("ERROR", LOGMESSAGE);
           return res.status(404).json({
-            success: false,
-            msg: "Id not found to delete"
+            success:false,
+            msg: "No such Issue Type"
           });
         }
-        const LOGMESSAGE = DATETIME + "|removed issue Type:" + id;
-        log.write("INFO", LOGMESSAGE);
-        return res.json({success:true,msg:"issue Type is deleted"});
-        // return res.status(204).json();
+
+
+        issueType.description = req.body.description ? req.body.description : issueType.description;
+
+
+        issueType.save(function (err, _issueType) {
+          if (err) {
+            const LOGMESSAGE = DATETIME + "|" + err.message;
+            log.write("ERROR", LOGMESSAGE);
+            return res.status(500).json({
+              success:false,
+              msg: "Error when updating Issue Type.",
+              error: err
+            });
+          }
+          const LOGMESSAGE = DATETIME + "|Saved Issue Type";
+          log.write("INFO", LOGMESSAGE);
+          return res.json({success:true,msg:"Issue Type is updated",data:issueType});
+        });
       });
     } catch (error) {
       const LOGMESSAGE = DATETIME + "|" + error.message;
       log.write("ERROR", LOGMESSAGE);
-      return res.json({
+      return res.status(500).json({
         success:false,
-        msg: "Error when updating issue Type",
+        msg: "Error when getting IssueType.",
         error: error
       });
     }
-    const DATETIME = dateFormat(new Date(), "yyyy-mm-dd HH:MM:ss");
-    var id = req.params.id;
-    issueTypeModel.findOne({ _id: id }, function (err, issueType) {
-      if (err) {
-        const LOGMESSAGE = DATETIME + "|" + err.message;
-        log.write("ERROR", LOGMESSAGE);
-        return res.status(500).json({
-          success:false,
-          msg: "Error when getting issue Type",
-          error: err
-        });
-      }
-      if (!issueType) {
-        const LOGMESSAGE = DATETIME + "|No such issue Type to update";
-        log.write("ERROR", LOGMESSAGE);
-        return res.status(404).json({
-          success:false,
-          msg: "No such issue Type"
-        });
-      }
 
-     
-      issueType.description = req.body.description ? req.body.description : issueType.description;
-
-
-      issueType.save(function (err, projeectType) {
-        if (err) {
-          const LOGMESSAGE = DATETIME + "|" + err.message;
-          log.write("ERROR", LOGMESSAGE);
-          return res.status(500).json({
-            success:false,
-            msg: "Error when updating issue Type.",
-            error: err
-          });
-        }
-        const LOGMESSAGE = DATETIME + "|Saved issue Type";
-        log.write("INFO", LOGMESSAGE);
-        return res.json({success:true,msg:"issue Type is updated",data:issueType});
-        // return res.json(issue Type);
-      });
-    });
   },
-
   remove: function (req, res) {
     try {
       const DATETIME = dateFormat(new Date(), "yyyy-mm-dd HH:MM:ss");

@@ -134,19 +134,12 @@ module.exports = {
         email: req.body.email,
         password: req.body.password,
         username: req.body.username,
-        designation: req.body.designation,
-        firstName: req.body.firstName,
-        lastName: req.body.lastName,
-        middleName: req.body.middleName,
-        phoneNo: req.body.phoneNo,
         companyId: req.body.companyId,
         department: req.body.department,
         role: req.body.role,
         lineManager: req.body.lineManager,
-        employmentType: req.body.employmentType,
         createdBy: req.body.createdBy,
         updatedBy: req.body.updatedBy,
-        joiningDate: req.body.joiningDate,
         status: req.body.status
       });
       user.setPassword(user, (error, isSet) => {

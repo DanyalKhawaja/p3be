@@ -89,18 +89,11 @@ module.exports = {
         email: req.body.email,
         username: req.body.username,
         password: req.body.password,
-        designation: req.body.designation,
-        firstName: req.body.firstName,
-        lastName: req.body.lastName,
-        middleName: req.body.middleName,
-        phoneNo: req.body.phoneNo,
         companyId: req.body.companyId,
         department: req.body.department,
         role: req.body.role,
         lineManager: req.body.lineManager,
-        employmentType: req.body.employmentType,
         createdBy: req.body.createdBy,
-        joiningDate: req.body.joiningDate,
         status: req.body.status,
         isVerified: true
       });
@@ -160,21 +153,13 @@ module.exports = {
         user.username = req.body.username ? req.body.username : user.username;
         user.email = req.body.email ? req.body.email : user.email;
         user.password = req.body.password ? req.body.password : user.password;
-
-        user.designation = req.body.designation ? req.body.designation : user.designation;
-        user.firstName = req.body.firstName ? req.body.firstName : user.firstName;
-        user.lastName = req.body.lastName ? req.body.lastName : user.lastName;
-        user.middleName = req.body.middleName ? req.body.middleName : user.middleName;
-        user.phoneNo = req.body.phoneNo ? req.body.phoneNo : user.phoneNo;
         user.companyId = req.body.companyId ? req.body.companyId : user.companyId;
         user.department = req.body.department ? req.body.department : user.department;
         user.role = req.body.role ? req.body.role : user.role;
         user.lineManager = req.body.lineManager ? req.body.lineManager : user.lineManager;
-        user.employmentType = req.body.employmentType ? req.body.employmentType : user.employmentType;
         user.createdBy = req.body.createdBy ? req.body.createdBy : user.createdBy;
         user.updatedBy = req.body.updatedBy ? req.body.updatedBy : user.updatedBy;
         user.updatedDate = DATETIME;
-        user.joiningDate = req.body.joiningDate ? req.body.joiningDate : user.joiningDate;
         user.status = req.body.status ? req.body.status : user.status;
         user.isVerified = req.body.isVerified ? req.body.isVerified : user.isVerified;
         console.log(req.body)
