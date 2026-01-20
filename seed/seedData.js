@@ -9,7 +9,7 @@ const Currency = require("../models/currencyModel");
 
 const bcryptjs = require('bcryptjs');
 
-const currencies = [{_id: "usd", name: "US Dollar"}, {_id: "pkr", name: "Pakistani Rupee"}];
+const currencies = [{ _id: "usd", name: "US Dollar" }, { _id: "pkr", name: "Pakistani Rupee" }];
 
 const menuOptions = [
     {
@@ -34,34 +34,43 @@ const menuOptions = [
         description: "Projects",
         order: 3,
         disabled: false,
-        roles: ['PROJMGR']
+        roles: ['PROJMGR', 'PROGMGR', 'PORTMGR']
+    },
+      {
+        path: "/admin",
+        route: "",
+        description: "Admin",
+        icon: "",
+        order: 4,
+        disabled: false,
+        roles: ['PROJMGR', 'PROGMGR', 'PORTMGR']
     },
     {
         path: "/dashboard",
         route: "/projects",
         description: "Dashboard",
         icon: "dashboard",
-        order: 2,
+        order: 1,
         disabled: false,
-        roles: ['PROJMGR']
+        roles: ['PROJMGR', 'PROGMGR', 'PORTMGR']
     },
     {
         path: "/gis",
         route: "/dashboard",
         description: "GIS",
         icon: "map",
-        order: 3,
+        order: 1,
         disabled: false,
-        roles: ['PROJMGR']
+        roles: ['PROJMGR', 'PROGMGR', 'PORTMGR']
     },
     {
         path: "/evm",
         route: "/dashboard",
         description: "EVM",
         icon: "analytics",
-        order: 3,
+        order: 2,
         disabled: false,
-        roles: ['PROJMGR']
+        roles: ['PROJMGR', 'PROGMGR', 'PORTMGR']
     },
     {
         path: "/forecast",
@@ -70,40 +79,40 @@ const menuOptions = [
         icon: "trending_up",
         order: 3,
         disabled: false,
-        roles: ['PROJMGR']
+        roles: ['PROJMGR', 'PROGMGR', 'PORTMGR']
     }, {
         path: "/kpis",
         route: "/dashboard",
         description: "KPIs",
         icon: "speed",
-        order: 3,
+        order: 4,
         disabled: false,
-        roles: ['PROJMGR']
+        roles: ['PROJMGR', 'PROGMGR', 'PORTMGR']
     }, {
         path: "/wpm",
         route: "/projects",
         description: "WPM",
         icon: "remove_red_eye",
-        order: 3,
+        order: 2,
         disabled: false,
-        roles: ['PROJMGR']
+        roles: ['PROJMGR', 'PROGMGR', 'PORTMGR']
     }, {
         path: "/var_graph",
         route: "/wpm",
         description: "Variance",
         icon: "manage_search",
-        order: 3,
+        order: 1,
         disabled: false,
-        roles: ['PROJMGR']
+        roles: ['PROJMGR', 'PROGMGR', 'PORTMGR']
     },
     {
         path: "/wpm",
         route: "/wpm",
         description: "Snapshot View",
         icon: "remove_red_eye",
-        order: 3,
+        order: 2,
         disabled: false,
-        roles: ['PROJMGR']
+        roles: ['PROJMGR', 'PROGMGR', 'PORTMGR']
     },
     {
         path: "/monthwise_variance",
@@ -112,52 +121,52 @@ const menuOptions = [
         icon: "calendar_view_week",
         order: 3,
         disabled: false,
-        roles: ['PROJMGR']
+        roles: ['PROJMGR', 'PROGMGR', 'PORTMGR']
     },
     {
         path: "/monthly_labor_rate",
         route: "/monthwise_variance",
         description: "Monthly Labor Rate",
         icon: "request_page",
-        order: 3,
+        order: 1,
         disabled: false,
-        roles: ['PROJMGR']
+        roles: ['PROJMGR', 'PROGMGR', 'PORTMGR']
     },
     {
         path: "/monthly_labor_efficiency",
         route: "/monthwise_variance",
         description: "Monthly Labor Efficiency",
         icon: "bolt",
-        order: 3,
+        order: 2,
         disabled: false,
-        roles: ['PROJMGR']
+        roles: ['PROJMGR', 'PROGMGR', 'PORTMGR']
     },
     {
         path: "/wbs",
         route: "/projects",
         description: "WBS",
         icon: "account_tree",
-        order: 3,
+        order: 4,
         disabled: false,
-        roles: ['PROJMGR']
+        roles: ['PROJMGR', 'PROGMGR', 'PORTMGR']
     },
     {
         path: "/wbs",
         route: "/wbs",
         description: "Edit",
         icon: "create",
-        order: 3,
+        order: 1,
         disabled: false,
-        roles: ['PROJMGR']
+        roles: ['PROJMGR', 'PROGMGR', 'PORTMGR']
     },
     {
         path: "/gantt_chart",
         route: "/wbs",
         description: "Gantt Chart",
         icon: "access_time",
-        order: 3,
+        order: 2,
         disabled: false,
-        roles: ['PROJMGR']
+        roles: ['PROJMGR', 'PROGMGR', 'PORTMGR']
     },
     {
         path: "/hierarchy",
@@ -166,34 +175,34 @@ const menuOptions = [
         icon: "park",
         order: 3,
         disabled: false,
-        roles: ['PROJMGR']
+        roles: ['PROJMGR', 'PROGMGR', 'PORTMGR']
     },
     {
         path: "/task",
         route: "/projects",
         description: "Tasks",
         icon: "task",
-        order: 3,
+        order: 5,
         disabled: false,
-        roles: ['PROJMGR']
+        roles: ['PROJMGR', 'PROGMGR', 'PORTMGR']
     },
     {
         path: "/status",
         route: "/task",
         description: "Status",
         icon: "quiz",
-        order: 3,
+        order: 1,
         disabled: false,
-        roles: ['PROJMGR']
+        roles: ['PROJMGR', 'PROGMGR', 'PORTMGR']
     },
     {
         path: "/due",
         route: "/task",
         description: "Execution Due",
         icon: "upcoming",
-        order: 3,
+        order: 2,
         disabled: false,
-        roles: ['PROJMGR']
+        roles: ['PROJMGR', 'PROGMGR', 'PORTMGR']
     },
     {
         path: "/monitoring",
@@ -202,43 +211,43 @@ const menuOptions = [
         icon: "adjust",
         order: 3,
         disabled: false,
-        roles: ['PROJMGR']
+        roles: ['PROJMGR', 'PROGMGR', 'PORTMGR']
     },
     {
         path: "/history",
         route: "/task",
         description: "Monitoring History",
         icon: "history_edu",
-        order: 3,
+        order: 4,
         disabled: false,
-        roles: ['PROJMGR']
+        roles: ['PROJMGR', 'PROGMGR', 'PORTMGR']
     },
     {
         path: "/resource_allocation",
         route: "/projects",
         description: "Resource Allocation",
         icon: "engineering",
-        order: 3,
+        order: 6,
         disabled: false,
-        roles: ['PROJMGR']
+        roles: ['PROJMGR', 'PROGMGR', 'PORTMGR']
     },
     {
         path: "/project_resource_type",
         route: "/resource_allocation",
         description: "Project's Resource Type",
         icon: "perm_contact_calendar",
-        order: 3,
+        order: 1,
         disabled: false,
-        roles: ['PROJMGR']
+        roles: ['PROJMGR', 'PROGMGR', 'PORTMGR']
     },
     {
         path: "/resource_schedule",
         route: "/resource_allocation",
         description: "Resource Schedule",
         icon: "perm_contact_calendar",
-        order: 3,
+        order: 2,
         disabled: false,
-        roles: ['PROJMGR']
+        roles: ['PROJMGR', 'PROGMGR', 'PORTMGR']
     },
     {
         path: "/resource_allocations",
@@ -247,34 +256,34 @@ const menuOptions = [
         icon: "perm_contact_calendar",
         order: 3,
         disabled: false,
-        roles: ['PROJMGR']
+        roles: ['PROJMGR', 'PROGMGR', 'PORTMGR']
     },
     {
         path: "/misc",
         route: "/projects",
         description: "Miscellaneous",
         icon: "line_style",
-        order: 3,
+        order: 7,
         disabled: false,
-        roles: ['PROJMGR']
+        roles: ['PROJMGR', 'PROGMGR', 'PORTMGR']
     },
     {
         path: "/riskregister",
         route: "/misc",
         description: "Risk Register",
         icon: "coronavirus",
-        order: 3,
+        order: 1,
         disabled: false,
-        roles: ['PROJMGR']
+        roles: ['PROJMGR', 'PROGMGR', 'PORTMGR']
     },
     {
         path: "/issuelog",
         route: "/misc",
         description: "Issue Log",
         icon: "report_problem",
-        order: 3,
+        order: 2,
         disabled: false,
-        roles: ['PROJMGR']
+        roles: ['PROJMGR', 'PROGMGR', 'PORTMGR']
     },
     {
         path: "/procurements",
@@ -283,87 +292,222 @@ const menuOptions = [
         icon: "local_grocery_store",
         order: 3,
         disabled: false,
-        roles: ['PROJMGR']
+        roles: ['PROJMGR', 'PROGMGR', 'PORTMGR']
     },
     {
         path: "/lessonslearned",
         route: "/misc",
         description: "Lessons Learned",
         icon: "auto_stories",
-        order: 3,
+        order: 4,
         disabled: false,
-        roles: ['PROJMGR']
+        roles: ['PROJMGR', 'PROGMGR', 'PORTMGR']
     },
     {
         path: "/stakeholders",
         route: "/misc",
         description: "Stake Holdeers",
         icon: "supervised_user_circle",
-        order: 3,
+        order: 5,
         disabled: false,
-        roles: ['PROJMGR']
+        roles: ['PROJMGR', 'PROGMGR', 'PORTMGR']
     },
     {
-        path: "/dashboard",
+        path: "/protfolio_dashboard",
         route: "/portfolios",
         description: "Dashboard",
         icon: "",
         order: 1,
         disabled: false,
-        roles: ['PROJMGR', 'PROGMGR','PORTMGR']
+        roles: ['PROJMGR', 'PROGMGR', 'PORTMGR']
+    },
+    {
+        path: "/kpis",
+        route: "/protfolio_dashboard",
+        description: "KPIs",
+        icon: "speed",
+        order: 1,
+        disabled: false,
+        roles: ['PROJMGR', 'PROGMGR', 'PORTMGR']
+    },
+    {
+        path: "/forecast",
+        route: "/protfolio_dashboard",
+        description: "Forecast",
+        icon: "speed",
+        order: 2,
+        disabled: false,
+        roles: ['PROJMGR', 'PROGMGR', 'PORTMGR']
+    },
+    {
+        path: "/programs_monitoring",
+        route: "/protfolio_dashboard",
+        description: "Programs Monitoring",
+        icon: "remove_red_eye",
+        order: 3,
+        disabled: false,
+        roles: ['PROJMGR', 'PROGMGR', 'PORTMGR']
+    },
+    {
+        path: "/stakeholders_map",
+        route: "/protfolio_dashboard",
+        description: "Stakeholders Mapping",
+        icon: "supervised_user_circle",
+        order: 4,
+        disabled: false,
+        roles: ['PROJMGR', 'PROGMGR', 'PORTMGR']
+    },
+    {
+        path: "/governancenewnew",
+        route: "/protfolio_dashboard",
+        description: "Governance",
+        icon: "g_mobiledata",
+        order: 1,
+        disabled: false,
+        roles: ['PROJMGR', 'PROGMGR', 'PORTMGR']
     },
     {
         path: "/scenario_analysis",
         route: "/portfolios",
         description: "Scenario Analysis",
         icon: "",
-        order: 1,
+        order: 2,
         disabled: false,
-        roles: ['PROJMGR', 'PROGMGR','PORTMGR']
+        roles: ['PROJMGR', 'PROGMGR', 'PORTMGR']
     },
     {
-        path: "/scenarioanalysis",
+        path: "/ppt",
         route: "/scenario_analysis",
         description: "Scenario Analysis",
-        icon: "",
+        icon: "bubble_chart",
         order: 1,
         disabled: false,
-        roles: ['PROJMGR', 'PROGMGR','PORTMGR']
+        roles: ['PROJMGR', 'PROGMGR', 'PORTMGR']
     },
     {
         path: "/portfolios",
         route: "/scenario_analysis",
         description: "Portfolios",
-        icon: "",
-        order: 1,
+        icon: "bubble_chart",
+        order: 2,
         disabled: false,
-        roles: ['PROJMGR', 'PROGMGR','PORTMGR']
+        roles: ['PROJMGR', 'PROGMGR', 'PORTMGR']
     },
     {
         path: "/programs",
         route: "/scenario_analysis",
-        description: "Portfolios",
-        icon: "",
-        order: 1,
+        description: "Programs",
+        icon: "bubble_chart",
+        order: 3,
         disabled: false,
-        roles: ['PROJMGR','PROGMGR', 'PORTMGR']
+        roles: ['PROJMGR', 'PROGMGR', 'PORTMGR']
     }, {
         path: "/projects",
         route: "/scenario_analysis",
-        description: "Portfolios",
-        icon: "",
-        order: 1,
+        description: "Projects",
+         icon: "bubble_chart",
+        order: 4,
         disabled: false,
-        roles: ['PROJMGR', 'PROGMGR','PORTMGR']
+        roles: ['PROJMGR', 'PROGMGR', 'PORTMGR']
+    },
+     {
+        path: "/misc",
+        route: "/portfolios",
+        description: "Miscellaneous",
+        icon: "line_style",
+        order: 3,
+        disabled: false,
+        roles: ['PROJMGR', 'PROGMGR', 'PORTMGR']
     },
     {
-        path: "/admin",
-        route: "",
-        description: "Admin",
-        icon: "",
+        path: "/program_dashboard",
+        route: "/programs",
+        description: "Dashboard",
+        icon: "dashboard",
         order: 1,
         disabled: false,
-        roles: ['PROJMGR']
+        roles: ['PROJMGR', 'PROGMGR', 'PORTMGR']
+    },
+    {
+        path: "/projects_monitoring",
+        route: "/program_dashboard",
+        description: "Projects Monitoring",
+        icon: "remove_red_eye",
+        order: 1,
+        disabled: false,
+        roles: ['PROJMGR', 'PROGMGR', 'PORTMGR']
+    },
+    {
+        path: "/forecast",
+        route: "/program_dashboard",
+        description: "Forecast",
+        icon: "trending_up",
+        order: 2,
+        disabled: false,
+        roles: ['PROJMGR', 'PROGMGR', 'PORTMGR']
+    },
+    {
+        path: "/kpis",
+        route: "/program_dashboard",
+        description: "KPI's",
+        icon: "speed",
+        order: 3,
+        disabled: false,
+        roles: ['PROJMGR', 'PROGMGR', 'PORTMGR']
+    },
+    {
+        path: "/governance",
+        route: "/program_dashboard",
+        description: "Governance",
+        icon: "g_mobiledata",
+        order: 4,
+        disabled: false,
+        roles: ['PROJMGR', 'PROGMGR', 'PORTMGR']
+    },
+    {
+        path: "/roadmap",
+        route: "/program_dashboard",
+        description: "Roadmap",
+        icon: "edit_road",
+        disabled: false,
+        order: 5,
+        roles: ['PROJMGR', 'PROGMGR', 'PORTMGR']
+    },
+    {
+        path: "/program_misc",
+        route: "/programs",
+        description: "Miscellaneous",
+        icon: "line_style",
+        order: 1,
+        disabled: false,
+        roles: ['PROJMGR', 'PROGMGR', 'PORTMGR']
+    },
+    {
+        path: "/stakeholders_map",
+        route: "/program_misc",
+        description: "Stakeholders Map",
+        icon: "supervised_user_circle",
+        order: 1,
+        disabled: false,
+        roles: ['PROJMGR', 'PROGMGR', 'PORTMGR']
+    },
+    {
+        path: "/benefits",
+        route: "/program_misc",
+        description: "Benefits",
+        icon: "map",
+        order: 2,
+        disabled: false,
+        roles: ['PROJMGR', 'PROGMGR', 'PORTMGR']
+    },
+    {
+        path: "/riskRegister",
+        route: "/program_misc",
+        description: "Risk Register",
+        icon: "coronavirus",
+        order: 3,
+        disabled: false,
+        roles: ['PROJMGR', 'PROGMGR', 'PORTMGR']
     },
     {
         path: "/master_lists",
@@ -372,7 +516,7 @@ const menuOptions = [
         icon: "view_list",
         order: 1,
         disabled: false,
-        roles: ['PROJMGR']
+        roles: ['PROJMGR', 'PROGMGR', 'PORTMGR']
     },
     {
         path: "/users",
@@ -381,115 +525,115 @@ const menuOptions = [
         icon: "toc",
         order: 1,
         disabled: false,
-        roles: ['PROJMGR']
+        roles: ['PROJMGR', 'PROGMGR', 'PORTMGR']
     },
     {
         path: "/riskstatus",
         route: "/master_lists",
         description: "Risk Status",
         icon: "toc",
-        order: 1,
+        order: 2,
         disabled: false,
-        roles: ['PROJMGR']
+        roles: ['PROJMGR', 'PROGMGR', 'PORTMGR']
     },
     {
         path: "/roles",
         route: "/master_lists",
         description: "Roles",
         icon: "toc",
-        order: 1,
+        order: 3,
         disabled: false,
-        roles: ['PROJMGR']
+        roles: ['PROJMGR', 'PROGMGR', 'PORTMGR']
     },
     {
         path: "/departments",
         route: "/master_lists",
         description: "Departments",
         icon: "toc",
-        order: 1,
+        order: 4,
         disabled: false,
-        roles: ['PROJMGR']
+        roles: ['PROJMGR', 'PROGMGR', 'PORTMGR']
     },
     {
         path: "/resourceTypes",
         route: "/master_lists",
         description: "Resource Types",
         icon: "toc",
-        order: 1,
+        order: 5,
         disabled: false,
-        roles: ['PROJMGR']
+        roles: ['PROJMGR', 'PROGMGR', 'PORTMGR']
     },
     {
         path: "/projectTypes",
         route: "/master_lists",
         description: "Project Types",
         icon: "toc",
-        order: 1,
+        order: 6,
         disabled: false,
-        roles: ['PROJMGR']
+        roles: ['PROJMGR', 'PROGMGR', 'PORTMGR']
     },
     {
         path: "/issueTypes",
         route: "/master_lists",
         description: "Issue Types",
         icon: "toc",
-        order: 1,
+        order: 7,
         disabled: false,
-        roles: ['PROJMGR']
+        roles: ['PROJMGR', 'PROGMGR', 'PORTMGR']
     },
     {
         path: "/issueCategories",
         route: "/master_lists",
         description: "Issue Categories",
         icon: "toc",
-        order: 1,
+        order: 8,
         disabled: false,
-        roles: ['PROJMGR']
+        roles: ['PROJMGR', 'PROGMGR', 'PORTMGR']
     },
     {
         path: "/issueStatus",
         route: "/master_lists",
         description: "Issue Status",
         icon: "toc",
-        order: 1,
+        order: 9,
         disabled: false,
-        roles: ['PROJMGR']
+        roles: ['PROJMGR', 'PROGMGR', 'PORTMGR']
     },
     {
         path: "/lessonsLearnedTypes",
         route: "/master_lists",
         description: "Lessons Learned Types",
         icon: "toc",
-        order: 1,
+        order: 10,
         disabled: false,
-        roles: ['PROJMGR']
+        roles: ['PROJMGR', 'PROGMGR', 'PORTMGR']
     },
     {
         path: "/stakeholderRoles",
         route: "/master_lists",
         description: "Stakeholder Roles",
         icon: "toc",
-        order: 1,
+        order: 111,
         disabled: false,
-        roles: ['PROJMGR']
+        roles: ['PROJMGR', 'PROGMGR', 'PORTMGR']
     },
     {
         path: "/benefitsNature",
         route: "/master_lists",
         description: "Benefits Nature",
         icon: "toc",
-        order: 1,
+        order: 12,
         disabled: false,
-        roles: ['PROJMGR']
+        roles: ['PROJMGR', 'PROGMGR', 'PORTMGR']
     },
     {
         path: "/boqs",
         route: "/master_lists",
         description: "BOQ's",
         icon: "toc",
-        order: 1,
+        order: 13,
         disabled: false,
-        roles: ['PROJMGR']
+        roles: ['PROJMGR', 'PROGMGR', 'PORTMGR']
     }
 ];
 
@@ -523,56 +667,58 @@ const seedDatabase = async () => {
         });
 
         console.log('Connected to MongoDB');
-
-        // Clear existing data (optional)
         await Page.deleteMany({});
-        await User.deleteMany({});
-        await Company.deleteMany({});
-        await ProjectType.deleteMany({});
-        await Role.deleteMany({});
-        await Currency.deleteMany({});
-        console.log('Cleared existing udata');
-
-        // Insert seed data
-        await ProjectType.insertMany(projectTypes);
-        await Currency.insertMany(currencies);
         await Page.insertMany(menuOptions);
-        const createdRoles = await Role.insertMany(roles);
-        const createdCompanies = await Company.insertMany(companies);
-
-        const subscriptions = [{
-            company: createdCompanies[0]._id,
-            type: "Unlimited"
-        }];
-
-        const users = [
-            {
-                email: "farhan@gmail.com",
-                username: "farhan",
-                password: "123",
-                companyId: createdCompanies[0]._id,
-                role: createdRoles[0]._id,
-                isVerified: true
-            }
-        ];
-
-
-        console.log(users)
-
-        await new Promise((res) => {
-            bcryptjs.genSalt(10, (err, salt) => {
-                bcryptjs.hash(users[0].password, salt, (err, hash) => {
-                    users[0].password = hash;
-                    res();
-                });
-            });
-        })
-
-
-        await User.insertMany(users);
-
-        await Subsription.insertMany(subscriptions);
-
+        /*
+                // Clear existing data (optional)
+              
+                await User.deleteMany({});
+                await Company.deleteMany({});
+                await ProjectType.deleteMany({});
+                await Role.deleteMany({});
+                await Currency.deleteMany({});
+                console.log('Cleared existing udata');
+        
+                // Insert seed data
+                await ProjectType.insertMany(projectTypes);
+                await Currency.insertMany(currencies);
+              
+                const createdRoles = await Role.insertMany(roles);
+                const createdCompanies = await Company.insertMany(companies);
+        
+                const subscriptions = [{
+                    company: createdCompanies[0]._id,
+                    type: "Unlimited"
+                }];
+        
+                const users = [
+                    {
+                        email: "farhan@gmail.com",
+                        username: "farhan",
+                        password: "123",
+                        companyId: createdCompanies[0]._id,
+                        role: createdRoles[0]._id,
+                        isVerified: true
+                    }
+                ];
+        
+        
+                console.log(users)
+        
+                await new Promise((res) => {
+                    bcryptjs.genSalt(10, (err, salt) => {
+                        bcryptjs.hash(users[0].password, salt, (err, hash) => {
+                            users[0].password = hash;
+                            res();
+                        });
+                    });
+                })
+        
+        
+                await User.insertMany(users);
+        
+                await Subsription.insertMany(subscriptions);
+        */
         console.log("created seed data")
 
         // Disconnect
