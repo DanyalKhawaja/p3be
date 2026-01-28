@@ -26,6 +26,7 @@ var TaskSchema = new schema({
   workPackage: { type: Boolean },
   costBreakup: { type: costBreakup },
   plannedCost: { type: Number},
+  plannedCostCurrency: { type: String, default: 'usd' },
   plannedCostPerDay: { type: Number},
   days: { type: Number},
   predecessors: { type: String, default: "" },

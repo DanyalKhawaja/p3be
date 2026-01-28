@@ -9,7 +9,7 @@ const Currency = require("../models/currencyModel");
 
 const bcryptjs = require('bcryptjs');
 
-const currencies = [{ _id: "usd", name: "US Dollar" }, { _id: "pkr", name: "Pakistani Rupee" }];
+const currencies = [{ _id: "USD", name: "US Dollar" }, { _id: "PKR", name: "Pakistani Rupee" }];
 
 const menuOptions = [
     {
@@ -660,16 +660,17 @@ const companies = [{
 
 const seedDatabase = async () => {
     try {
-        // Connect to MongoDB
-        await mongoose.connect('mongodb://localhost:27017/p3', {
-            useNewUrlParser: true,
-            useUnifiedTopology: true
-        });
+
+        await mongoose.connect('mongodb://admin:superman19@localhost:27017/p3', {
+    authSource: 'admin',
+    useNewUrlParser: true,
+    useUnifiedTopology: true
+});
 
         console.log('Connected to MongoDB');
         await Page.deleteMany({});
         await Page.insertMany(menuOptions);
-        /*
+        
                 // Clear existing data (optional)
               
                 await User.deleteMany({});
@@ -718,7 +719,7 @@ const seedDatabase = async () => {
                 await User.insertMany(users);
         
                 await Subsription.insertMany(subscriptions);
-        */
+        
         console.log("created seed data")
 
         // Disconnect

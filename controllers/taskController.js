@@ -7061,6 +7061,7 @@ module.exports = {
         if (!task) respondWithNotFound(res, 'No such task');
 
         taskModel.insertMany(req.body, function (err, data) {
+          console.log(err)
           if (err) respondWithError(res, err, 'Error when creating task.');
           const LOGMESSAGE = DATETIME + '|task created';
           log.write('INFO', LOGMESSAGE);

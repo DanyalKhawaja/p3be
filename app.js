@@ -59,10 +59,14 @@ const companyRoutes = require('./routes/companyRoutes')
 const subscriptionRoutes = require('./routes/subscriptionRoutes');
 const componentRoutes = require('./routes/componentRoutes');
 
-const clientOptions = { useNewUrlParser: true } ;
+const clientOptions = {
+    authSource: 'admin',
+    useUnifiedTopology: true,
+    useNewUrlParser: true,
+} ;
 (async () => {
   await mongoose.connect(databaseConfig.uri, clientOptions);
-  await mongoose.connection.db.admin().command({ ping: 1 });
+  // await mongoose.connection.db.admin().command({ ping: 1 });
 }
 )();
 

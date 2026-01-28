@@ -12,10 +12,11 @@ var programSchema = new schema(
         startDate: { type: Date, required: true },
         endDate: { type: Date, required: true },
         status: { type: String , default: "Approved"},
-        // currency: {
-        //     type: String,
-        //     ref: "Currency",
-        // },
+        currency: {
+           type: String,
+            ref: "Currency",
+            default: "usd"
+        },
         budgetRequired: { type: Number, default: 0},
         totalEstimatedBudget: {type: Number, default: 0},
         manager: {

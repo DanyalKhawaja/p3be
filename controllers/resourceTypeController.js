@@ -7,6 +7,7 @@ module.exports = {
   
   list: function (req, res) {
     try {
+
       const DATETIME = dateFormat(new Date(), "yyyy-mm-dd HH:MM:ss");
       resourceTypeModel.find(function (err, resourceType) {
         if (err) {
@@ -67,15 +68,15 @@ module.exports = {
       const DATETIME = dateFormat(new Date(), "yyyy-mm-dd HH:MM:ss");
       var resourceType = new resourceTypeModel({
         name: req.body.name,
-        isActive: req.body.isActive,
+        isActive: req.body.isActive || true,
         description: req.body.description,
         parentId: req.body.parentId,
-        level: req.body.level,
+        level: req.body.level || 0,
         path: req.body.path,
         child: [],
         unit: req.body.unit,
         currency: req.body.currency,
-        singleItem : req.body.singleItem,        
+        singleItem : true || req.body.singleItem ,        
         rate: req.body.rate,
         createdBy: req.body.createdBy,
         createdDate: DATETIME,

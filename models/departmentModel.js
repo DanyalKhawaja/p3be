@@ -7,8 +7,7 @@ var departmentSchema = new schema(
     description: { type: String },
     HOD: {
         type: mongoose.Schema.ObjectId,
-        ref: 'User',
-        required:true
+        ref: 'User'
       },
   }
 );
